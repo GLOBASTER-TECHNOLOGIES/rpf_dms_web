@@ -7,7 +7,6 @@ export async function POST(req: Request) {
     await dbConnect();
 
     const body = await req.json();
-    console.log(body);
     const { name, forceNumber, rank, role, postCode, division, password } =
       body;
 
@@ -40,7 +39,7 @@ export async function POST(req: Request) {
       forceNumber,
       rank,
       role,
-      postId: "665f5caa71a92f7c5e41c9d2",
+      postCode,
       division,
       password,
     });
