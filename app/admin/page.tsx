@@ -50,7 +50,7 @@ const modules: Module[] = [
   {
     title: "Threat Calendar",
     description: "Track and schedule threat alerts, security events and operational dates.",
-    href: "/admin/threatcalendar",
+    href: "/admin/threat-calendar",
     icon: <CalendarClock size={26} />,
     accent: "hover:border-amber-500",
     iconBg: "bg-amber-50 text-amber-600",
