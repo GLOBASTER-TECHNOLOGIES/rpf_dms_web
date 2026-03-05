@@ -5,8 +5,8 @@ export interface IOfficer extends Document {
   forceNumber?: string;
   rank?: "DSC" | "ASC" | "IPF" | "SI" | "ASI" | "HC" | "CONSTABLE";
   role: "ADMIN" | "SO" | "STAFF";
-  stationId?: mongoose.Types.ObjectId;
   postId?: mongoose.Types.ObjectId;
+  division?: string;
   password: string;
   active: boolean;
   createdAt: Date;
@@ -23,6 +23,7 @@ const OfficerSchema: Schema<IOfficer> = new Schema(
 
     forceNumber: {
       type: String,
+      required: true,
       unique: true,
       index: true,
     },
@@ -30,6 +31,7 @@ const OfficerSchema: Schema<IOfficer> = new Schema(
     rank: {
       type: String,
       enum: ["DSC", "ASC", "IPF", "SI", "ASI", "HC", "CONSTABLE"],
+      required: true,
     },
 
     role: {
@@ -38,14 +40,15 @@ const OfficerSchema: Schema<IOfficer> = new Schema(
       required: true,
     },
 
-    stationId: {
-      type: Schema.Types.ObjectId,
-      ref: "Station",
-    },
-
     postId: {
       type: Schema.Types.ObjectId,
       ref: "Post",
+      required: true,
+    },
+
+    division: {
+      type: String,
+      required: true,
     },
 
     password: {
