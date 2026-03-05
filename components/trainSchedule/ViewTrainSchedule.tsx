@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   Train,
   ArrowLeft,
@@ -18,6 +19,7 @@ import {
   ArrowRight,
   Search,
   Filter,
+  LayoutDashboard,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import CreateTrainSchedule from "./CreateTrainSchedule";
@@ -104,6 +106,7 @@ const DeleteConfirmModal = ({ schedule, onConfirm, onCancel, loading }: {
 );
 
 const ViewTrainSchedule = () => {
+  const router = useRouter();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [schedules, setSchedules] = useState<TrainSchedule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -175,30 +178,41 @@ const ViewTrainSchedule = () => {
     <div className="space-y-6 p-6">
 
       {/* Header */}
-      <div className="bg-slate-900 px-8 py-6 rounded-2xl flex items-center justify-between shadow-lg">
-        <div className="flex items-center gap-5">
-          <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center shadow-md flex-shrink-0 p-1">
-            <Image src="/rpf_logo.png" alt="RPF Logo" width={48} height={48} className="object-contain w-full h-full" />
+      <div className="bg-slate-900 px-8 py-6 rounded-2xl shadow-lg">
+        {/* Back to Admin */}
+        <button
+          onClick={() => router.push("/admin")}
+          className="flex items-center gap-1.5 text-slate-400 hover:text-white text-xs font-semibold mb-5 transition group"
+        >
+          <LayoutDashboard size={13} className="group-hover:-translate-x-0.5 transition-transform" />
+          Back to Admin
+        </button>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-5">
+            <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center shadow-md flex-shrink-0 p-1">
+              <Image src="/rpf_logo.png" alt="RPF Logo" width={48} height={48} className="object-contain w-full h-full" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white tracking-tight">Train Schedules</h1>
+              <p className="text-slate-400 text-sm mt-0.5">Manage train timings and platforms</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Train Schedules</h1>
-            <p className="text-slate-400 text-sm mt-0.5">Manage train timings and platforms</p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => schedules.length > 0 && exportSchedules(schedules)}
+              disabled={schedules.length === 0}
+              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-5 py-3 rounded-xl text-sm font-semibold transition disabled:opacity-40"
+            >
+              <FileDown size={16} /> Export
+            </button>
+            <button
+              onClick={() => setShowCreateForm(true)}
+              className="flex items-center gap-2 bg-white text-slate-900 px-5 py-3 rounded-xl text-sm font-bold hover:bg-slate-100 transition shadow"
+            >
+              <Plus size={16} /> New Schedule
+            </button>
           </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => schedules.length > 0 && exportSchedules(schedules)}
-            disabled={schedules.length === 0}
-            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-5 py-3 rounded-xl text-sm font-semibold transition disabled:opacity-40"
-          >
-            <FileDown size={16} /> Export
-          </button>
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="flex items-center gap-2 bg-white text-slate-900 px-5 py-3 rounded-xl text-sm font-bold hover:bg-slate-100 transition shadow"
-          >
-            <Plus size={16} /> New Schedule
-          </button>
         </div>
       </div>
 
