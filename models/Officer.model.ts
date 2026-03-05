@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
-export interface IUser extends Document {
+export interface IOfficer extends Document {
   name: string;
   badgeNumber?: string;
   rank?: "DSC" | "ASC" | "IPF" | "SI" | "ASI" | "HC" | "CONSTABLE";
@@ -9,13 +9,23 @@ export interface IUser extends Document {
   postId?: mongoose.Types.ObjectId;
   password: string;
   active: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-const UserSchema: Schema<IUser> = new Schema(
+const OfficerSchema: Schema<IOfficer> = new Schema(
   {
-    name: { type: String, required: true },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
-    badgeNumber: { type: String, unique: true },
+    badgeNumber: {
+      type: String,
+      unique: true,
+      index: true,
+    },
 
     rank: {
       type: String,
@@ -38,14 +48,24 @@ const UserSchema: Schema<IUser> = new Schema(
       ref: "Post",
     },
 
-    password: { type: String, required: true },
+    password: {
+      type: String,
+      required: true,
+      select: false
+    },
 
-    active: { type: Boolean, default: true },
+    active: {
+      type: Boolean,
+      default: true,
+    },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+  }
 );
 
-const User: Model<IUser> =
-  mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+const Officer: Model<IOfficer> =
+  mongoose.models.Officer ||
+  mongoose.model<IOfficer>("Officer", OfficerSchema);
 
-export default User;
+export default Officer;
