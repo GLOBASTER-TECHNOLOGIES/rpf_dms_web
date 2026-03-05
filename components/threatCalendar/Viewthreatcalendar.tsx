@@ -67,9 +67,10 @@ const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 
 const extractArray = (data: any): ThreatCalendar[] => {
-  if (Array.isArray(data)) return data;
-  if (data && Array.isArray(data.events)) return data.events;
+  // Handle { success: true, data: [...] } shape from API
   if (data && Array.isArray(data.data)) return data.data;
+  if (data && Array.isArray(data.events)) return data.events;
+  if (Array.isArray(data)) return data;
   return [];
 };
 
@@ -209,7 +210,12 @@ const ViewThreatCalendar = () => {
     setLoading(true); setError("");
     try {
       const res = await axios.get("/api/threatcalendar/get", { headers: { "Cache-Control": "no-cache" } });
-      setEvents(extractArray(res.data));
+      if (res.data?.success) {
+        setEvents(extractArray(res.data));
+      } else {
+        setError(res.data?.message || "Failed to load events.");
+        setEvents([]);
+      }
     } catch { setError("Failed to load events. Please try again."); setEvents([]); }
     finally { setLoading(false); }
   };
