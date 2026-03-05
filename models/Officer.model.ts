@@ -2,7 +2,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IOfficer extends Document {
   name: string;
-  badgeNumber?: string;
+  forceNumber?: string;
   rank?: "DSC" | "ASC" | "IPF" | "SI" | "ASI" | "HC" | "CONSTABLE";
   role: "ADMIN" | "SO" | "STAFF";
   stationId?: mongoose.Types.ObjectId;
@@ -21,7 +21,7 @@ const OfficerSchema: Schema<IOfficer> = new Schema(
       trim: true,
     },
 
-    badgeNumber: {
+    forceNumber: {
       type: String,
       unique: true,
       index: true,
@@ -51,7 +51,7 @@ const OfficerSchema: Schema<IOfficer> = new Schema(
     password: {
       type: String,
       required: true,
-      select: false
+      select: false,
     },
 
     active: {
@@ -61,11 +61,10 @@ const OfficerSchema: Schema<IOfficer> = new Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 const Officer: Model<IOfficer> =
-  mongoose.models.Officer ||
-  mongoose.model<IOfficer>("Officer", OfficerSchema);
+  mongoose.models.Officer || mongoose.model<IOfficer>("Officer", OfficerSchema);
 
 export default Officer;
