@@ -8,23 +8,50 @@ export async function POST(req: Request) {
 
     const body = await req.json();
 
-    const officer = await Officer.create(body);
+    const { name, forceNumber, rank, role, postId, division, password } = body;
+
+    if (!name || !forceNumber || !rank || !role || !postId || !division || !password) {
+      return NextResponse.json(
+        { success: false, message: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    const existingOfficer = await Officer.findOne({ forceNumber });
+
+    if (existingOfficer) {
+      return NextResponse.json(
+        { success: false, message: "Force number already exists" },
+        { status: 409 }
+      );
+    }
+
+    const officer = await Officer.create({
+      name,
+      forceNumber,
+      rank,
+      role,
+      postId,
+      division,
+      password
+    });
 
     return NextResponse.json(
       {
         success: true,
-        data: officer,
+        data: officer
       },
-      { status: 201 },
+      { status: 201 }
     );
+
   } catch (error) {
-    console.log(error);
+
+    console.error(error);
+
     return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to create user",
-      },
-      { status: 500 },
+      { success: false, message: "Failed to create officer" },
+      { status: 500 }
     );
+
   }
 }
