@@ -20,7 +20,7 @@ import EditOfficerModal from "./Editofficer";
 interface Officer {
   _id: string;
   name: string;
-  badgeNumber?: string;
+  forceNumber?: string;
   rank?: "DSC" | "ASC" | "IPF" | "SI" | "ASI" | "HC" | "CONSTABLE";
   role: "ADMIN" | "SO" | "STAFF";
   stationId?: string;
@@ -32,7 +32,7 @@ interface Officer {
 
 const ROLE_COLORS: Record<string, string> = {
   ADMIN: "bg-blue-50 text-blue-700 border-blue-200",
-  SO:    "bg-indigo-50 text-indigo-700 border-indigo-200",
+  SO: "bg-indigo-50 text-indigo-700 border-indigo-200",
   STAFF: "bg-slate-100 text-slate-600 border-slate-200",
 };
 
@@ -40,7 +40,7 @@ const exportOfficers = (officers: Officer[]) => {
   const headers = ["Name", "Badge Number", "Rank", "Role", "Status"];
   const rows = officers.map((o) => [
     o.name,
-    o.badgeNumber || "N/A",
+    o.forceNumber || "N/A",
     o.rank || "N/A",
     o.role,
     o.active ? "Active" : "Inactive",
@@ -60,6 +60,7 @@ const exportOfficers = (officers: Officer[]) => {
 const OfficersView = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [officers, setOfficers] = useState<Officer[]>([]);
+  console.log(officers)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -69,11 +70,14 @@ const OfficersView = () => {
   const fetchOfficers = async () => {
     setLoading(true);
     setError("");
+
     try {
       const res = await axios.get("/api/officer/get", {
         headers: { "Cache-Control": "no-cache" },
       });
-      setOfficers(res.data.officers ?? res.data ?? []);
+
+      setOfficers(res.data.data ?? []);
+
     } catch (err) {
       console.error("Error fetching officers:", err);
       setError("Failed to load officers. Please try again.");
@@ -210,7 +214,7 @@ const OfficersView = () => {
                   <th className="px-7 py-4 text-sm font-semibold text-slate-500 w-[28%]">Officer Details</th>
                   <th className="px-6 py-4 text-sm font-semibold text-slate-500">Role</th>
                   <th className="px-6 py-4 text-sm font-semibold text-slate-500">Rank</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-slate-500">Badge Number</th>
+                  <th className="px-6 py-4 text-sm font-semibold text-slate-500">Force Number</th>
                   <th className="px-6 py-4 text-sm font-semibold text-slate-500">Status</th>
                   <th className="px-6 py-4 text-sm font-semibold text-slate-500 text-right">Actions</th>
                 </tr>
@@ -232,9 +236,8 @@ const OfficersView = () => {
                     {/* Role */}
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-flex items-center px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-widest border ${
-                          ROLE_COLORS[officer.role] ?? "bg-slate-100 text-slate-600 border-slate-200"
-                        }`}
+                        className={`inline-flex items-center px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-widest border ${ROLE_COLORS[officer.role] ?? "bg-slate-100 text-slate-600 border-slate-200"
+                          }`}
                       >
                         {officer.role}
                       </span>
@@ -244,7 +247,7 @@ const OfficersView = () => {
                     <td className="px-6 py-4 text-sm text-slate-700">
                       {officer.rank
                         ? officer.rank.charAt(0).toUpperCase() +
-                          officer.rank.slice(1).toLowerCase()
+                        officer.rank.slice(1).toLowerCase()
                         : <span className="text-slate-300">—</span>
                       }
                     </td>
@@ -253,7 +256,7 @@ const OfficersView = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5 text-slate-500 text-sm font-mono">
                         <Hash size={13} className="text-slate-300" />
-                        {officer.badgeNumber || <span className="text-slate-300">N/A</span>}
+                        {officer.forceNumber || <span className="text-slate-300">N/A</span>}
                       </div>
                     </td>
 
@@ -261,16 +264,14 @@ const OfficersView = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <span
-                          className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                            officer.active ? "bg-green-500" : "bg-slate-300"
-                          }`}
+                          className={`w-2 h-2 rounded-full flex-shrink-0 ${officer.active ? "bg-green-500" : "bg-slate-300"
+                            }`}
                         />
                         <span
-                          className={`text-sm ${
-                            officer.active
-                              ? "text-green-700 font-medium"
-                              : "text-slate-400"
-                          }`}
+                          className={`text-sm ${officer.active
+                            ? "text-green-700 font-medium"
+                            : "text-slate-400"
+                            }`}
                         >
                           {officer.active ? "Active" : "Inactive"}
                         </span>
@@ -320,9 +321,8 @@ const OfficersView = () => {
                     </div>
                   </div>
                   <span
-                    className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border flex-shrink-0 ${
-                      ROLE_COLORS[officer.role] ?? "bg-slate-100 text-slate-600 border-slate-200"
-                    }`}
+                    className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border flex-shrink-0 ${ROLE_COLORS[officer.role] ?? "bg-slate-100 text-slate-600 border-slate-200"
+                      }`}
                   >
                     {officer.role}
                   </span>
@@ -344,14 +344,12 @@ const OfficersView = () => {
                     </span>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          officer.active ? "bg-green-500" : "bg-slate-300"
-                        }`}
+                        className={`w-1.5 h-1.5 rounded-full ${officer.active ? "bg-green-500" : "bg-slate-300"
+                          }`}
                       />
                       <span
-                        className={`text-sm font-medium ${
-                          officer.active ? "text-green-700" : "text-slate-400"
-                        }`}
+                        className={`text-sm font-medium ${officer.active ? "text-green-700" : "text-slate-400"
+                          }`}
                       >
                         {officer.active ? "Active" : "Inactive"}
                       </span>
