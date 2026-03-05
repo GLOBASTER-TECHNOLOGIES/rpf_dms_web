@@ -34,7 +34,7 @@ const modules: Module[] = [
   {
     title: "RPF Posts",
     description: "View, create and manage RPF Thanas and outposts across divisions.",
-    href: "/admin/posts",
+    href: "/admin/post",
     icon: <Building2 size={26} />,
     accent: "hover:border-blue-600",
     iconBg: "bg-blue-50 text-blue-700",
@@ -42,7 +42,7 @@ const modules: Module[] = [
   {
     title: "Officers",
     description: "Register and manage RPF personnel, ranks, roles and post assignments.",
-    href: "/admin/officers",
+    href: "/admin/officer",
     icon: <Users size={26} />,
     accent: "hover:border-emerald-600",
     iconBg: "bg-emerald-50 text-emerald-700",
