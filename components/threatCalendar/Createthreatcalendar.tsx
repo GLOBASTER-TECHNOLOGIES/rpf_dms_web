@@ -93,13 +93,13 @@ const CreateThreatCalendar: React.FC<CreateThreatCalendarProps> = ({ onSuccess }
         advisories: formData.advisories || undefined,
       };
       const res = await axios.post("/api/threatcalendar/create", payload);
-      if (res.status === 201) {
+      if (res.status === 201 && res.data?.success) {
         toast.success("Threat event created successfully");
         setFormData({ eventName: "", type: "FESTIVAL", location: "", startDate: "", endDate: "", riskLevel: "LOW", advisories: "" });
         onSuccess();
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to create threat event");
+      toast.error(err.response?.data?.message || "Failed to create threat event");
     } finally {
       setLoading(false);
     }
