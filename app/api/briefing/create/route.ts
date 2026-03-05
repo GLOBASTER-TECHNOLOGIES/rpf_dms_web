@@ -26,17 +26,25 @@ export async function POST(req: Request) {
 
     // 1. Fetch active context from the database
     // (You will need to create the Circular and ThreatCalendar models if you haven't yet)
+    // 1. Fetch active Circulars (Excluding DB metadata)
     const activeCirculars = await Circular.find({
       activeFrom: { $lte: today },
       activeTo: { $gte: today },
       $or: [{ targetPosts: post }, { targetPosts: { $size: 0 } }],
-    }).lean();
+    })
+      .select("-_id -createdAt -updatedAt -__v") // <-- Add this line
+      .lean();
 
+    // 2. Fetch active Threats (Excluding DB metadata)
     const activeThreats = await ThreatCalendar.find({
       startDate: { $lte: today },
       endDate: { $gte: today },
-      $or: [{ affectedPosts: post }, { affectedPosts: { $size: 0 } }],
-    }).lean();
+      // Optional: Add your $or location logic back here if you decided to use it
+    })
+      .select("-_id -createdAt -updatedAt -__v") // <-- Add this line
+      .lean();
+
+    console.log(activeThreats);
 
     // 2. THIS IS WHERE THE AI IS USED
     // We pass the data to your Groq function, and it returns the text.
@@ -48,6 +56,7 @@ export async function POST(req: Request) {
       activeCirculars,
       activeThreats,
     });
+    // const generatedScript = "pauased for now";
 
     // 3. Now we populate the database model with the AI's output
     const briefing = await Briefing.create({
