@@ -7,13 +7,22 @@ export async function POST(req: Request) {
     await dbConnect();
 
     const body = await req.json();
+    console.log(body);
+    const { name, forceNumber, rank, role, postCode, division, password } =
+      body;
 
-    const { name, forceNumber, rank, role, postId, division, password } = body;
-
-    if (!name || !forceNumber || !rank || !role || !postId || !division || !password) {
+    if (
+      !name ||
+      !forceNumber ||
+      !rank ||
+      !role ||
+      !postCode ||
+      !division ||
+      !password
+    ) {
       return NextResponse.json(
         { success: false, message: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -22,7 +31,7 @@ export async function POST(req: Request) {
     if (existingOfficer) {
       return NextResponse.json(
         { success: false, message: "Force number already exists" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -31,27 +40,24 @@ export async function POST(req: Request) {
       forceNumber,
       rank,
       role,
-      postId,
+      postId: "665f5caa71a92f7c5e41c9d2",
       division,
-      password
+      password,
     });
 
     return NextResponse.json(
       {
         success: true,
-        data: officer
+        data: officer,
       },
-      { status: 201 }
+      { status: 201 },
     );
-
   } catch (error) {
-
     console.error(error);
 
     return NextResponse.json(
       { success: false, message: "Failed to create officer" },
-      { status: 500 }
+      { status: 500 },
     );
-
   }
 }
