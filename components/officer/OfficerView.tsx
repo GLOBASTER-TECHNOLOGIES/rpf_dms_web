@@ -25,7 +25,7 @@ interface Officer {
   forceNumber?: string;
   rank?: "DSC" | "ASC" | "IPF" | "SI" | "ASI" | "HC" | "CONSTABLE";
   role: "ADMIN" | "SO" | "STAFF";
-  postId?: string;
+  postCode?: string;
   division?: string;
   active: boolean;
   createdAt: string;
@@ -152,8 +152,8 @@ const OfficersView = () => {
       const data = res.data;
       const list = Array.isArray(data) ? data
         : Array.isArray(data?.data) ? data.data
-        : Array.isArray(data?.officers) ? data.officers
-        : [];
+          : Array.isArray(data?.officers) ? data.officers
+            : [];
       setOfficers(list);
     } catch (err) {
       console.error("Error fetching officers:", err);
@@ -263,6 +263,7 @@ const OfficersView = () => {
                   <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Role</th>
                   <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Rank</th>
                   <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Force No.</th>
+                  <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Post</th>
                   <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Division</th>
                   <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
                   <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-right">Actions</th>
@@ -302,6 +303,17 @@ const OfficersView = () => {
                         <Hash size={12} className="text-slate-300" />
                         {officer.forceNumber ?? <span className="text-slate-300">N/A</span>}
                       </div>
+                    </td>
+
+                    {/* Post */}
+                    <td className="px-6 py-4">
+                      {officer.postCode ? (
+                        <div className="flex items-center gap-1.5 text-slate-600 text-sm font-mono">
+                          {officer.postCode}
+                        </div>
+                      ) : (
+                        <span className="text-slate-300 text-sm">—</span>
+                      )}
                     </td>
 
                     {/* Division */}
@@ -370,7 +382,7 @@ const OfficersView = () => {
                   </div>
 
                   {/* Info row */}
-                  <div className="mt-4 grid grid-cols-3 gap-3 pt-4 border-t border-slate-100">
+                  <div className="mt-4 grid grid-cols-4 gap-3 pt-4 border-t border-slate-100">
                     <div>
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Rank</p>
                       {officer.rank ? (
@@ -378,6 +390,12 @@ const OfficersView = () => {
                           {officer.rank}
                         </span>
                       ) : <p className="text-sm text-slate-300 mt-1">—</p>}
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Post</p>
+                      <p className="text-sm font-medium text-slate-700 mt-1">
+                        {officer.postCode ?? "—"}
+                      </p>
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Division</p>
