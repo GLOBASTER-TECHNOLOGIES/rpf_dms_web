@@ -3,7 +3,6 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 export interface IPost extends Document {
   postCode: string;
   division: string;
-  station: string;
   password: string;
   ipfId?: mongoose.Types.ObjectId;
   contactNumber?: string;
@@ -20,43 +19,37 @@ const PostSchema: Schema<IPost> = new Schema(
       unique: true,
       uppercase: true,
       trim: true,
-      index: true
+      index: true,
     },
 
     division: {
       type: String,
       required: true,
-      uppercase: true
-    },
-
-    station: {
-      type: String,
-      required: true,
-      uppercase: true
+      uppercase: true,
     },
 
     password: {
       type: String,
       required: true,
-      select: false
+      select: false,
     },
 
     ipfId: {
       type: Schema.Types.ObjectId,
-      ref: "Officer"
+      ref: "Officer",
     },
 
     contactNumber: {
-      type: String
+      type: String,
     },
 
     address: {
-      type: String
-    }
+      type: String,
+    },
   },
   {
-    timestamps: true
-  }
+    timestamps: true,
+  },
 );
 
 const Post: Model<IPost> =
