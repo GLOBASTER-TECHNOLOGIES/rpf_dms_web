@@ -5,7 +5,7 @@ export interface IOfficer extends Document {
   forceNumber?: string;
   rank?: "DSC" | "ASC" | "IPF" | "SI" | "ASI" | "HC" | "CONSTABLE";
   role: "ADMIN" | "SO" | "STAFF";
-  postId?: mongoose.Types.ObjectId;
+  postCode?: string;
   division?: string;
   password: string;
   active: boolean;
@@ -40,10 +40,12 @@ const OfficerSchema: Schema<IOfficer> = new Schema(
       required: true,
     },
 
-    postId: {
-      type: Schema.Types.ObjectId,
-      ref: "Post",
+    postCode: {
+      type: String,
+      ref: "Post", // reference Post model
       required: true,
+      uppercase: true,
+      trim: true,
     },
 
     division: {
