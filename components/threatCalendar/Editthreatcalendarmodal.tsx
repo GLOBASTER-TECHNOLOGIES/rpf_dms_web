@@ -128,13 +128,13 @@ const EditThreatCalendarModal: React.FC<EditThreatCalendarModalProps> = ({
         advisories: formData.advisories || undefined,
       };
       const res = await axios.put(`/api/threatcalendar/update?id=${event._id}`, payload);
-      if (res.status === 200) {
+      if (res.status === 200 && res.data?.success) {
         toast.success("Threat event updated");
         onUpdateSuccess();
         onClose();
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to update event");
+      toast.error(err.response?.data?.message || "Failed to update event");
     } finally { setLoading(false); }
   };
 
