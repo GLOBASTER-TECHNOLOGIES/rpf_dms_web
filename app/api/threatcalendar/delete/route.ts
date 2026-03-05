@@ -3,7 +3,7 @@ import dbConnect from "@/config/dbConnect";
 import ThreatCalendar from "@/models/ThreatCalendar.model";
 import mongoose from "mongoose";
 
-export async function PUT(req: Request) {
+export async function DELETE(req: Request) {
   try {
     await dbConnect();
 
@@ -17,13 +17,7 @@ export async function PUT(req: Request) {
       );
     }
 
-    const body = await req.json();
-
-    const event = await ThreatCalendar.findByIdAndUpdate(
-      id,
-      body,
-      { new: true }
-    );
+    const event = await ThreatCalendar.findByIdAndDelete(id);
 
     if (!event) {
       return NextResponse.json(
@@ -32,16 +26,15 @@ export async function PUT(req: Request) {
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      data: event,
-    });
-
+    return NextResponse.json(
+      { success: true, message: "Event deleted successfully" },
+      { status: 200 }
+    );
   } catch (error) {
     console.error(error);
 
     return NextResponse.json(
-      { success: false, message: "Failed to update threat event" },
+      { success: false, message: "Failed to delete threat event" },
       { status: 500 }
     );
   }
