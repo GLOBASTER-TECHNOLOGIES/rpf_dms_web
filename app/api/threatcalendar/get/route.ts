@@ -2,48 +2,21 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/config/dbConnect";
 import ThreatCalendar from "@/models/ThreatCalendar.model";
 
-export async function POST(req: Request) {
+export async function GET() {
   try {
     await dbConnect();
 
-    const body = await req.json();
-
-    const {
-      eventName,
-      type,
-      location,
-      startDate,
-      endDate,
-      riskLevel,
-      advisories,
-    } = body;
-
-    if (!eventName || !type || !startDate || !endDate || !riskLevel) {
-      return NextResponse.json(
-        { success: false, message: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
-    const event = await ThreatCalendar.create({
-      eventName,
-      type,
-      location,
-      startDate,
-      endDate,
-      riskLevel,
-      advisories,
-    });
+    const events = await ThreatCalendar.find().sort({ startDate: 1 });
 
     return NextResponse.json(
-      { success: true, data: event },
-      { status: 201 }
+      { success: true, data: events },
+      { status: 200 }
     );
   } catch (error) {
     console.error(error);
 
     return NextResponse.json(
-      { success: false, message: "Failed to create threat event" },
+      { success: false, message: "Failed to fetch threat events" },
       { status: 500 }
     );
   }
