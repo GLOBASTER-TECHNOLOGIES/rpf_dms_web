@@ -1,29 +1,62 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IPost extends Document {
-  stationId: mongoose.Types.ObjectId;
-  name: string;
-  locationDescription?: string;
-  riskLevel: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  postCode: string;
+  division: string;
+  station: string;
+  password: string;
+  ipfId?: mongoose.Types.ObjectId;
+  contactNumber?: string;
+  address?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const PostSchema: Schema<IPost> = new Schema(
   {
-    stationId: {
-      type: Schema.Types.ObjectId,
-      ref: "Station"
+    postCode: {
+      type: String,
+      required: true,
+      unique: true,
+      uppercase: true,
+      trim: true,
+      index: true
     },
 
-    name: String,
-
-    locationDescription: String,
-
-    riskLevel: {
+    division: {
       type: String,
-      enum: ["LOW","MEDIUM","HIGH","CRITICAL"]
+      required: true,
+      uppercase: true
+    },
+
+    station: {
+      type: String,
+      required: true,
+      uppercase: true
+    },
+
+    password: {
+      type: String,
+      required: true,
+      select: false
+    },
+
+    ipfId: {
+      type: Schema.Types.ObjectId,
+      ref: "Officer"
+    },
+
+    contactNumber: {
+      type: String
+    },
+
+    address: {
+      type: String
     }
   },
-  { timestamps: true }
+  {
+    timestamps: true
+  }
 );
 
 const Post: Model<IPost> =
