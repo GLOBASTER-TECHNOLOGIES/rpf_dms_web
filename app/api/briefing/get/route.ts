@@ -21,7 +21,7 @@ export async function GET(req: Request) {
         );
       }
 
-      const briefing = await Briefing.findById(id);
+      const briefing = await Briefing.findById(id).lean();
 
       if (!briefing) {
         return NextResponse.json(
@@ -41,14 +41,15 @@ export async function GET(req: Request) {
     if (post) filter.post = post;
     if (shift) filter.shift = shift;
 
-    const briefings = await Briefing.find(filter).sort({ createdAt: -1 });
+    const briefings = await Briefing.find(filter)
+      .sort({ createdAt: -1 })
+      .lean();
 
     return NextResponse.json({
       success: true,
       count: briefings.length,
       data: briefings,
     });
-
   } catch (error) {
     console.error(error);
 

@@ -19,9 +19,15 @@ export async function PUT(req: Request) {
 
     const body = await req.json();
 
+    const allowedUpdates = {
+      isDelivered: body.isDelivered,
+      deliveredAt: body.deliveredAt,
+      isPrinted: body.isPrinted,
+    };
+
     const briefing = await Briefing.findByIdAndUpdate(
       id,
-      body,
+      allowedUpdates,
       { new: true }
     );
 
@@ -36,7 +42,6 @@ export async function PUT(req: Request) {
       success: true,
       data: briefing,
     });
-
   } catch (error) {
     console.error(error);
 

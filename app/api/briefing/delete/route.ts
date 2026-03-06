@@ -30,7 +30,6 @@ export async function DELETE(req: Request) {
       success: true,
       message: "Briefing deleted successfully",
     });
-
   } catch (error) {
     console.error(error);
 
