@@ -12,7 +12,7 @@ interface BriefingContext {
   date: string;
   activeCirculars: any[];
   activeThreats: any[];
-  trainSchedule: any[]; // Add this to pass train data
+  // trainSchedule: any[]; // Add this to pass train data
 }
 
 export async function generateBriefingScript(
@@ -25,7 +25,7 @@ export async function generateBriefingScript(
     date,
     activeCirculars,
     activeThreats,
-    trainSchedule,
+    // trainSchedule,
   } = context;
 
   const systemPrompt = `
@@ -56,9 +56,6 @@ export async function generateBriefingScript(
        - Summarize crowd management or security advisories from the 'Active Threat Forecasts' JSON.
        - If the JSON is empty, output exactly: "- No special threat forecasts for this shift."
 
-    5. CLOSING:
-       - Output exactly: "- Ensure strict compliance with RPF values. Maintain vigilance."
-
     === RAW DATA ===
     - Post: ${post}
     - Shift: ${shift}
@@ -67,8 +64,6 @@ export async function generateBriefingScript(
     Active Circulars:
     ${JSON.stringify(activeCirculars)}
     
-    Train Schedule:
-    ${JSON.stringify(trainSchedule)}
     
     Active Threat Forecasts:
     ${JSON.stringify(activeThreats)}
@@ -100,7 +95,7 @@ export async function generateBriefingScript(
       .replace(/<think>[\s\S]*?<\/think>/gi, "") // Removes the thinking block
       .replace(/\*\*/g, "") // Removes all double asterisks
       .trim();
-      
+
     return generatedScript;
   } catch (error) {
     console.error("Groq API Error:", error);
