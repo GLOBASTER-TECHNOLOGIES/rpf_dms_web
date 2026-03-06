@@ -44,11 +44,11 @@ interface ThreatCalendar {
 }
 
 // ── Style maps ────────────────────────────────────────────────────────────
-const RISK_STYLE: Record<string, { pill: string; bar: string; badge: string }> = {
-  LOW:      { pill: "bg-green-50 text-green-700 border-green-200",   bar: "bg-green-500",  badge: "text-green-700" },
-  MEDIUM:   { pill: "bg-amber-50 text-amber-700 border-amber-200",   bar: "bg-amber-500",  badge: "text-amber-700" },
-  HIGH:     { pill: "bg-orange-50 text-orange-700 border-orange-200", bar: "bg-orange-500", badge: "text-orange-700" },
-  CRITICAL: { pill: "bg-red-50 text-red-700 border-red-200",         bar: "bg-red-600",    badge: "text-red-700" },
+const RISK_STYLE: Record<string, { pill: string; bar: string; glow: string; dot: string }> = {
+  LOW:      { pill: "bg-green-50 text-green-700 border-green-200",    bar: "bg-green-500",  glow: "shadow-green-100",  dot: "bg-green-500" },
+  MEDIUM:   { pill: "bg-amber-50 text-amber-700 border-amber-200",    bar: "bg-amber-500",  glow: "shadow-amber-100",  dot: "bg-amber-500" },
+  HIGH:     { pill: "bg-orange-50 text-orange-700 border-orange-200", bar: "bg-orange-500", glow: "shadow-orange-100", dot: "bg-orange-500" },
+  CRITICAL: { pill: "bg-red-50 text-red-700 border-red-200",          bar: "bg-red-600",    glow: "shadow-red-100",    dot: "bg-red-600" },
 };
 
 const TYPE_STYLE: Record<string, string> = {
@@ -67,7 +67,6 @@ const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 
 const extractArray = (data: any): ThreatCalendar[] => {
-  // Handle { success: true, data: [...] } shape from API
   if (data && Array.isArray(data.data)) return data.data;
   if (data && Array.isArray(data.events)) return data.events;
   if (Array.isArray(data)) return data;
@@ -97,7 +96,9 @@ const DeleteConfirmModal = ({ event, onConfirm, onCancel, loading }: {
           </div>
           <h2 className="text-base font-bold text-slate-800">Delete Event</h2>
         </div>
-        <button onClick={onCancel} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition"><X size={16} /></button>
+        <button onClick={onCancel} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition">
+          <X size={16} />
+        </button>
       </div>
       <div className="px-6 py-6">
         <p className="text-sm text-slate-600 leading-relaxed">
@@ -107,8 +108,12 @@ const DeleteConfirmModal = ({ event, onConfirm, onCancel, loading }: {
         <p className="text-xs text-slate-400 mt-2">This action is permanent and cannot be undone.</p>
       </div>
       <div className="flex gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100">
-        <button onClick={onCancel} disabled={loading} className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-white transition bg-white disabled:opacity-50">Cancel</button>
-        <button onClick={onConfirm} disabled={loading} className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition flex items-center justify-center gap-2 disabled:opacity-60">
+        <button onClick={onCancel} disabled={loading}
+          className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-white transition bg-white disabled:opacity-50">
+          Cancel
+        </button>
+        <button onClick={onConfirm} disabled={loading}
+          className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition flex items-center justify-center gap-2 disabled:opacity-60">
           {loading ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
           {loading ? "Deleting..." : "Yes, Delete"}
         </button>
@@ -117,70 +122,105 @@ const DeleteConfirmModal = ({ event, onConfirm, onCancel, loading }: {
   </div>
 );
 
-// ── Event Card ────────────────────────────────────────────────────────────
+// ── Event Card (Vertical) ─────────────────────────────────────────────────
 const EventCard = ({ event, onEdit, onDelete }: {
   event: ThreatCalendar; onEdit: () => void; onDelete: () => void;
 }) => {
   const risk = RISK_STYLE[event.riskLevel];
   const isActive = new Date(event.endDate) >= new Date();
+  const isSameDay = fmtDate(event.startDate) === fmtDate(event.endDate);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col overflow-hidden">
-      {/* Risk colour bar */}
-      <div className={`h-1.5 w-full ${risk.bar}`} />
+    <div className={`bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col overflow-hidden`}>
 
-      <div className="p-5 flex flex-col gap-3 flex-1">
-        {/* Top: name + status */}
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold text-slate-900 text-sm leading-snug">{event.eventName}</h3>
-          <span className={`flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-100 text-slate-400 border-slate-200"}`}>
-            {isActive ? "Active" : "Past"}
+      {/* Top risk bar */}
+      <div className={`h-2 w-full ${risk.bar}`} />
+
+      <div className="p-6 flex flex-col gap-4 flex-1">
+
+        {/* Header row: status badge + active/past */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border ${TYPE_STYLE[event.type]}`}>
+              <Tag size={11} />
+              {TYPE_LABEL[event.type]}
+            </span>
+            <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border ${risk.pill}`}>
+              <AlertTriangle size={11} />
+              {event.riskLevel}
+            </span>
+          </div>
+          <span className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border ${
+            isActive
+              ? "bg-green-50 text-green-700 border-green-200"
+              : "bg-slate-100 text-slate-400 border-slate-200"
+          }`}>
+            {isActive ? "● Active" : "○ Past"}
           </span>
         </div>
 
-        {/* Pills: type + risk */}
-        <div className="flex flex-wrap gap-1.5">
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${TYPE_STYLE[event.type]}`}>
-            {TYPE_LABEL[event.type]}
-          </span>
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${risk.pill}`}>
-            <AlertTriangle size={9} /> {event.riskLevel}
-          </span>
-        </div>
+        {/* Event name */}
+        <h3 className="text-lg font-bold text-slate-900 leading-snug">{event.eventName}</h3>
 
-        {/* Dates */}
-        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-          <CalendarDays size={12} className="text-slate-300 flex-shrink-0" />
-          {fmtDate(event.startDate)}
-          {event.startDate !== event.endDate && <><span className="text-slate-300">→</span>{fmtDate(event.endDate)}</>}
+        {/* Divider */}
+        <div className="border-t border-slate-100" />
+
+        {/* Date range */}
+        <div className="flex items-center gap-3">
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${risk.pill} border`}>
+            <CalendarDays size={16} />
+          </div>
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">
+              {isSameDay ? "Date" : "Date Range"}
+            </p>
+            {isSameDay ? (
+              <p className="text-sm font-semibold text-slate-800">{fmtDate(event.startDate)}</p>
+            ) : (
+              <p className="text-sm font-semibold text-slate-800">
+                {fmtDate(event.startDate)}
+                <span className="text-slate-400 mx-1.5">→</span>
+                {fmtDate(event.endDate)}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Location */}
         {event.location && (
-          <div className="flex items-center gap-1.5 text-xs text-slate-500">
-            <MapPin size={12} className="text-slate-300 flex-shrink-0" />
-            {event.location}
-          </div>
-        )}
-
-        {/* Advisories preview */}
-        {event.advisories && (
-          <div className="pt-3 border-t border-slate-100">
-            <div className="flex items-start gap-1.5">
-              <FileText size={11} className="text-slate-300 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{event.advisories}</p>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center flex-shrink-0">
+              <MapPin size={16} className="text-slate-500" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Location</p>
+              <p className="text-sm font-semibold text-slate-800">{event.location}</p>
             </div>
           </div>
         )}
+
+        {/* Advisories */}
+        {event.advisories && (
+          <div className="flex items-start gap-3 bg-slate-50 rounded-xl p-4 border border-slate-100">
+            <FileText size={15} className="text-slate-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Advisories</p>
+              <p className="text-sm text-slate-600 leading-relaxed line-clamp-3">{event.advisories}</p>
+            </div>
+          </div>
+        )}
+
       </div>
 
       {/* Action strip */}
-      <div className="flex border-t border-slate-100">
-        <button onClick={onEdit} className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition border-r border-slate-100">
-          <Edit size={13} /> Edit
+      <div className="flex border-t border-slate-100 mt-auto">
+        <button onClick={onEdit}
+          className="flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-semibold text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition border-r border-slate-100">
+          <Edit size={15} /> Edit
         </button>
-        <button onClick={onDelete} className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold text-slate-400 hover:bg-red-50 hover:text-red-500 transition">
-          <Trash2 size={13} /> Delete
+        <button onClick={onDelete}
+          className="flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-semibold text-slate-400 hover:bg-red-50 hover:text-red-500 transition">
+          <Trash2 size={15} /> Delete
         </button>
       </div>
     </div>
@@ -251,7 +291,8 @@ const ViewThreatCalendar = () => {
   if (showCreateForm) {
     return (
       <div className="space-y-5 p-6">
-        <button onClick={() => setShowCreateForm(false)} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition font-medium text-sm">
+        <button onClick={() => setShowCreateForm(false)}
+          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition font-medium text-sm">
           <ArrowLeft size={18} /> Back to Threat Calendar
         </button>
         <CreateThreatCalendar onSuccess={() => setShowCreateForm(false)} />
@@ -266,13 +307,12 @@ const ViewThreatCalendar = () => {
       <div className="bg-gradient-to-r from-red-900 to-red-800 px-8 py-6 rounded-2xl shadow-lg">
         <button
           onClick={() => router.push("/admin")}
-          className="flex items-center gap-1.5 text-red-300 hover:text-white text-xs font-semibold mb-5 transition group"
+          className="flex items-center gap-1.5 text-red-300 hover:text-white text-xs font-semibold mb-5 transition"
         >
-          <LayoutDashboard size={13} />
-          Back to Admin
+          <LayoutDashboard size={13} /> Back to Admin
         </button>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-5">
             <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center shadow-md flex-shrink-0 p-1">
               <Image src="/rpf_logo.png" alt="RPF Logo" width={48} height={48} className="object-contain w-full h-full" />
@@ -300,12 +340,15 @@ const ViewThreatCalendar = () => {
         </div>
       </div>
 
-      {error && <div className="p-4 bg-red-50 text-red-600 rounded-xl border border-red-200 text-sm">{error}</div>}
+      {error && (
+        <div className="p-4 bg-red-50 text-red-600 rounded-xl border border-red-200 text-sm">{error}</div>
+      )}
 
       {/* ── Filter Bar ── */}
       {!loading && events.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-5">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+
             {/* Search */}
             <div className="relative flex-1 min-w-0">
               <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -318,172 +361,99 @@ const ViewThreatCalendar = () => {
               />
             </div>
 
-            {/* Type filter */}
-            <div className="relative">
-              <Tag size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <select
-                className="pl-9 pr-8 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-transparent focus:bg-white transition-all appearance-none cursor-pointer"
-                value={filterType} onChange={(e) => setFilterType(e.target.value)}
-              >
-                <option value="All">All Types</option>
-                {EVENT_TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
-              </select>
-            </div>
+            <div className="flex gap-3 flex-wrap sm:flex-nowrap">
+              {/* Type */}
+              <div className="relative flex-1 sm:flex-none">
+                <Tag size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <select
+                  className="w-full sm:w-auto pl-9 pr-8 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-transparent focus:bg-white transition-all appearance-none cursor-pointer"
+                  value={filterType} onChange={(e) => setFilterType(e.target.value)}
+                >
+                  <option value="All">All Types</option>
+                  {EVENT_TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
+                </select>
+              </div>
 
-            {/* Risk filter */}
-            <div className="relative">
-              <ShieldAlert size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <select
-                className="pl-9 pr-8 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-transparent focus:bg-white transition-all appearance-none cursor-pointer"
-                value={filterRisk} onChange={(e) => setFilterRisk(e.target.value)}
-              >
-                <option value="All">All Risk Levels</option>
-                {RISK_LEVELS.map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </div>
+              {/* Risk */}
+              <div className="relative flex-1 sm:flex-none">
+                <ShieldAlert size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <select
+                  className="w-full sm:w-auto pl-9 pr-8 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-transparent focus:bg-white transition-all appearance-none cursor-pointer"
+                  value={filterRisk} onChange={(e) => setFilterRisk(e.target.value)}
+                >
+                  <option value="All">All Risk Levels</option>
+                  {RISK_LEVELS.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
 
-            {/* Status filter */}
-            <div className="relative">
-              <Filter size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <select
-                className="pl-9 pr-8 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-transparent focus:bg-white transition-all appearance-none cursor-pointer"
-                value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-              >
-                <option value="All">All Status</option>
-                <option value="active">Active</option>
-                <option value="past">Past</option>
-              </select>
-            </div>
+              {/* Status */}
+              <div className="relative flex-1 sm:flex-none">
+                <Filter size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <select
+                  className="w-full sm:w-auto pl-9 pr-8 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-transparent focus:bg-white transition-all appearance-none cursor-pointer"
+                  value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
+                >
+                  <option value="All">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="past">Past</option>
+                </select>
+              </div>
 
-            {hasFilters && (
-              <button onClick={clearFilters} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 font-medium transition px-3 py-3 rounded-xl hover:bg-slate-100 whitespace-nowrap">
-                <X size={14} /> Clear
-              </button>
-            )}
+              {hasFilters && (
+                <button onClick={clearFilters}
+                  className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 font-medium transition px-4 py-3 rounded-xl hover:bg-slate-100 whitespace-nowrap border border-slate-200">
+                  <X size={14} /> Clear
+                </button>
+              )}
+            </div>
           </div>
-          <p className="mt-3 text-xs text-slate-400 font-medium">
-            Showing <span className="text-slate-700 font-bold">{filtered.length}</span> of <span className="text-slate-700 font-bold">{events.length}</span> events
+
+          <p className="mt-4 text-sm text-slate-400 font-medium">
+            Showing <span className="text-slate-700 font-bold">{filtered.length}</span> of{" "}
+            <span className="text-slate-700 font-bold">{events.length}</span> events
           </p>
         </div>
       )}
 
       {/* ── Content ── */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-slate-200">
-          <Loader2 className="animate-spin text-red-700 mb-3" size={30} />
+        <div className="flex flex-col items-center justify-center py-24 bg-white rounded-2xl border border-slate-200">
+          <Loader2 className="animate-spin text-red-700 mb-3" size={32} />
           <p className="text-slate-500 text-sm">Loading Threat Calendar...</p>
         </div>
+
       ) : events.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-2xl border border-slate-200">
-          <CalendarClock className="mx-auto text-slate-300 mb-4" size={42} />
-          <p className="text-slate-600 font-semibold text-base">No threat events found.</p>
-          <p className="text-slate-400 text-sm mt-1">Add the first event to the threat calendar.</p>
-          <button onClick={() => setShowCreateForm(true)} className="mt-5 px-6 py-3 bg-red-800 text-white text-sm font-semibold rounded-xl hover:bg-red-900 transition">
+        <div className="text-center py-24 bg-white rounded-2xl border border-slate-200">
+          <CalendarClock className="mx-auto text-slate-300 mb-4" size={48} />
+          <p className="text-slate-700 font-bold text-lg">No threat events found.</p>
+          <p className="text-slate-400 text-sm mt-1.5">Add the first event to the threat calendar.</p>
+          <button onClick={() => setShowCreateForm(true)}
+            className="mt-6 px-7 py-3 bg-red-800 text-white text-sm font-semibold rounded-xl hover:bg-red-900 transition">
             Add First Event
           </button>
         </div>
+
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
-          <Search className="mx-auto text-slate-300 mb-3" size={36} />
-          <p className="text-slate-500 font-medium">No events match your filters.</p>
-          <button onClick={clearFilters} className="mt-4 px-5 py-2.5 bg-slate-100 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-200 transition">
+        <div className="text-center py-20 bg-white rounded-2xl border border-slate-200">
+          <Search className="mx-auto text-slate-300 mb-3" size={40} />
+          <p className="text-slate-600 font-semibold">No events match your filters.</p>
+          <button onClick={clearFilters}
+            className="mt-4 px-6 py-2.5 bg-slate-100 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-200 transition">
             Clear Filters
           </button>
         </div>
-      ) : (
-        <>
-          {/* Desktop Table */}
-          <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/60">
-                  <th className="px-7 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Event</th>
-                  <th className="px-7 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Type</th>
-                  <th className="px-7 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Risk</th>
-                  <th className="px-7 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Dates</th>
-                  <th className="px-7 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Location</th>
-                  <th className="px-7 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Advisories</th>
-                  <th className="px-7 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((e) => {
-                  const risk = RISK_STYLE[e.riskLevel];
-                  const isActive = new Date(e.endDate) >= new Date();
-                  return (
-                    <tr key={e._id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70 transition-colors">
-                      <td className="px-7 py-5">
-                        <p className="font-bold text-slate-900 text-sm">{e.eventName}</p>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border mt-1.5 inline-block ${isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-100 text-slate-400 border-slate-200"}`}>
-                          {isActive ? "Active" : "Past"}
-                        </span>
-                      </td>
-                      <td className="px-7 py-5">
-                        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${TYPE_STYLE[e.type]}`}>
-                          {TYPE_LABEL[e.type]}
-                        </span>
-                      </td>
-                      <td className="px-7 py-5">
-                        <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border ${risk.pill}`}>
-                          <AlertTriangle size={11} />{e.riskLevel}
-                        </span>
-                      </td>
-                      <td className="px-7 py-5">
-                        <div className="text-sm text-slate-700 font-medium space-y-0.5">
-                          <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                            <CalendarDays size={12} className="text-slate-300" />
-                            {fmtDate(e.startDate)}
-                          </div>
-                          {e.startDate !== e.endDate && (
-                            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                              <span className="ml-4">→ {fmtDate(e.endDate)}</span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-7 py-5">
-                        {e.location ? (
-                          <div className="flex items-center gap-1.5 text-sm text-slate-600">
-                            <MapPin size={13} className="text-slate-300 flex-shrink-0" />{e.location}
-                          </div>
-                        ) : <span className="text-slate-300 text-sm">—</span>}
-                      </td>
-                      <td className="px-7 py-5 max-w-[220px]">
-                        {e.advisories ? (
-                          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{e.advisories}</p>
-                        ) : <span className="text-slate-300 text-sm">—</span>}
-                      </td>
-                      <td className="px-7 py-5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button onClick={() => { setSelectedEvent(e); setIsEditModalOpen(true); }}
-                            className="p-2.5 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-colors" title="Edit">
-                            <Edit size={17} />
-                          </button>
-                          <button onClick={() => setDeleteTarget(e)}
-                            className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors" title="Delete">
-                            <Trash2 size={17} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
 
-          {/* Card Grid (mobile/tablet) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:hidden">
-            {filtered.map((e) => (
-              <EventCard
-                key={e._id}
-                event={e}
-                onEdit={() => { setSelectedEvent(e); setIsEditModalOpen(true); }}
-                onDelete={() => setDeleteTarget(e)}
-              />
-            ))}
-          </div>
-        </>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+          {filtered.map((e) => (
+            <EventCard
+              key={e._id}
+              event={e}
+              onEdit={() => { setSelectedEvent(e); setIsEditModalOpen(true); }}
+              onDelete={() => setDeleteTarget(e)}
+            />
+          ))}
+        </div>
       )}
 
       <EditThreatCalendarModal
