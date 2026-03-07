@@ -1,161 +1,109 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import BriefingForm from "@/components/briefing/BriefingForm";
+import BriefingDisplay from "@/components/briefing/BriefingDisplay";
 
-export default function BriefingGenerator() {
-    // Form State
-    const [post, setPost] = useState("Trichy Junction");
-    const [shift, setShift] = useState("Morning");
-    const [language, setLanguage] = useState("English");
+import toast from "react-hot-toast";
+import axios from "axios";
 
-    // App State
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [generatedScript, setGeneratedScript] = useState<string | null>(null);
+function getCurrentShift(): "Morning" | "Afternoon" | "Night" {
+    const hour = new Date().getHours();
+    if (hour >= 6 && hour < 14) return "Morning";
+    if (hour >= 14 && hour < 22) return "Afternoon";
+    return "Night";
+}
 
-    // In a real app, you'd get this from your Auth context (e.g., NextAuth)
+export default function BriefingDashboard() {
+    // Mocking the logged-in SO details
     const MOCK_SO_ID = "65f0a1b2c3d4e5f6a7b8c9d0";
+    const MOCK_POST = "Trichy Junction";
 
-    const handleGenerate = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setError(null);
-        setGeneratedScript(null);
+    const [currentShift, setCurrentShift] = useState("");
+    const [activeBriefing, setActiveBriefing] = useState<any>(null);
 
+    // Initialize the shift on load
+    useEffect(() => {
+        setCurrentShift(getCurrentShift());
+        // TODO: In a real app, you would also run a fetch here to see if a briefing 
+        // already exists for today's date and the current shift, and set it to activeBriefing.
+    }, []);
+
+    const handleGenerate = async (language: string) => {
         try {
-            const response = await fetch("/api/briefing/create", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    stationOfficerId: MOCK_SO_ID,
-                    post,
-                    shift,
-                    language,
-                }),
+            const response = await axios.post("/api/briefing/create", {
+                stationOfficerId: MOCK_SO_ID,
+                post: MOCK_POST,
+                shift: currentShift,
+                language: language,
             });
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || "Something went wrong");
+            if (response.data.success) {
+                setActiveBriefing(response.data.data);
+                toast.success("Intelligence Briefing Generated");
             }
-
-            // The backend returns { success: true, data: briefingDocument }
-            setGeneratedScript(data.data.generatedScript);
-
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setIsLoading(false);
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Generation failed");
         }
     };
 
-    const handlePrint = () => {
-        window.print();
+    const handleMarkDelivered = async (briefingId: string) => {
+        try {
+            // Assuming you create a quick PATCH route to update this
+            // await axios.patch(`/api/briefing/${briefingId}`, { isDelivered: true });
+
+            // Optimistic UI update
+            setActiveBriefing({ ...activeBriefing, isDelivered: true });
+            toast.success("Delivery logged successfully");
+        } catch (error) {
+            toast.error("Failed to mark as delivered");
+        }
     };
 
+    if (!currentShift) return null; // Avoid hydration mismatch
+
     return (
-        <div className="min-h-screen bg-gray-50 p-8 font-sans">
-            <div className="max-w-4xl mx-auto space-y-8">
+        <div className="min-h-screen bg-slate-50 p-6 md:p-10 font-sans">
+            <div className="max-w-6xl mx-auto space-y-6">
 
-                {/* Header Section */}
-                <div className="text-center space-y-2">
-                    <h1 className="text-3xl font-bold text-gray-900">RPF Duty Management System</h1>
-                    <p className="text-gray-500">Shift Briefing Generator [cite: 38-40]</p>
-                </div>
+                <header className="mb-8 print:hidden">
+                    <h1 className="text-3xl font-bold text-slate-900">Duty Briefing Dashboard</h1>
+                    <p className="text-slate-500">RPF Intelligence-Led Security Operations [cite: 15]</p>
+                </header>
 
-                {/* Input Card */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 print:hidden">
-                    <form onSubmit={handleGenerate} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-                        {/* Post Selection */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-gray-700">Duty Post</label>
-                            <select
-                                value={post}
-                                onChange={(e) => setPost(e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                            >
-                                <option value="Trichy Junction">Trichy Junction</option>
-                                <option value="Srirangam">Srirangam</option>
-                                <option value="Thanjavur">Thanjavur</option>
-                            </select>
-                        </div>
+                    {/* Left Column: Form & History */}
+                    <div className="lg:col-span-4 space-y-6">
+                        <BriefingForm
+                            post={MOCK_POST}
+                            shift={currentShift}
+                            hasExistingBriefing={!!activeBriefing}
+                            onGenerate={handleGenerate}
+                        />
 
-                        {/* Shift Selection */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-gray-700">Shift [cite: 71]</label>
-                            <select
-                                value={shift}
-                                onChange={(e) => setShift(e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                            >
-                                <option value="Morning">Morning</option>
-                                <option value="Afternoon">Afternoon</option>
-                                <option value="Night">Night</option>
-                            </select>
-                        </div>
-
-                        {/* Language Selection */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-gray-700">Language [cite: 71]</label>
-                            <select
-                                value={language}
-                                onChange={(e) => setLanguage(e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                            >
-                                <option value="English">English</option>
-                                <option value="Tamil">Tamil</option>
-                                <option value="Hindi">Hindi</option>
-                            </select>
-                        </div>
-
-                        {/* Submit Button */}
-                        <div className="md:col-span-3 flex justify-end mt-4">
-                            <button
-                                type="submit"
-                                disabled={isLoading}
-                                className={`px-6 py-3 rounded-lg font-semibold text-white transition-all ${isLoading ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
-                                    }`}
-                            >
-                                {isLoading ? "Fetching Intelligence & Generating..." : "Generate Briefing Script"}
-                            </button>
-                        </div>
-                    </form>
-
-                    {error && (
-                        <div className="mt-4 p-4 bg-red-50 text-red-600 rounded-lg text-sm border border-red-200">
-                            Error: {error}
-                        </div>
-                    )}
-                </div>
-
-                {/* Output Document area */}
-                {generatedScript && (
-                    <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-200">
-                        <div className="flex justify-between items-center mb-6 print:hidden">
-                            <h2 className="text-xl font-bold text-gray-800">Generated Briefing Script</h2>
-                            <button
-                                onClick={handlePrint}
-                                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium border border-gray-300 transition-colors"
-                            >
-                                Print Script
-                            </button>
-                        </div>
-
-                        <hr className="mb-6 print:hidden" />
-
-                        {/* The whitespace-pre-wrap class is critical here. 
-              It ensures the line breaks generated by the AI are actually rendered on screen.
-            */}
-                        <div className="prose max-w-none text-gray-800 font-serif whitespace-pre-wrap leading-relaxed">
-                            {generatedScript}
+                        {/* You can insert your <BriefingHistory /> component here later */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 print:hidden">
+                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Past Briefings (Today)</h3>
+                            <p className="text-sm text-slate-500 italic">No previous shifts recorded today.</p>
                         </div>
                     </div>
-                )}
 
+                    {/* Right Column: The Document Viewer */}
+                    <div className="lg:col-span-8">
+                        {activeBriefing ? (
+                            <BriefingDisplay
+                                briefing={activeBriefing}
+                                onMarkDelivered={handleMarkDelivered}
+                            />
+                        ) : (
+                            <div className="bg-slate-100 border-2 border-dashed border-slate-200 rounded-2xl h-64 flex flex-col items-center justify-center text-slate-400 print:hidden">
+                                <p>Configure parameters and generate a script to view intelligence.</p>
+                            </div>
+                        )}
+                    </div>
+
+                </div>
             </div>
         </div>
     );
