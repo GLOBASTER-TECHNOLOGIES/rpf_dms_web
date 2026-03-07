@@ -11,12 +11,12 @@ export async function POST(req: Request) {
 
     const body = await req.json();
 
-    const { createdByOfficerId, post, shift, language } = body;
+    const { createdByOfficerId = "69a92a2283c9f11bbc09b22b", post, shift, language } = body;
 
     if (!createdByOfficerId || !post || !shift || !language) {
       return NextResponse.json(
         { success: false, message: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -57,14 +57,14 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       { success: true, data: briefing },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error: any) {
     console.error("Briefing Generation Pipeline Error:", error);
 
     return NextResponse.json(
       { success: false, message: error.message || "Failed to create briefing" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
