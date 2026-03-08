@@ -57,7 +57,7 @@ export default function GenerateBriefingPage() {
                 {/* Top Navigation - Hidden on Print */}
                 <div className="print:hidden">
                     <Link href="/so/dashboard" className="inline-flex items-center text-sm font-semibold text-slate-500 hover:text-blue-700 transition-colors mb-6">
-                        <ArrowLeft size={16} className="mr-2" /> Back to Command Center
+                        <ArrowLeft size={16} className="mr-2" /> Back to Dashboard
                     </Link>
                     <h1 className="text-3xl font-bold text-slate-900">Shift Briefing Generator</h1>
                 </div>
