@@ -81,7 +81,7 @@ export default function GenerateBriefingPage() {
                             <select
                                 value={language}
                                 onChange={(e) => setLanguage(e.target.value)}
-                                className="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none bg-slate-50 font-medium"
+                                className="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none text-black bg-slate-50 font-medium"
                             >
                                 <option value="English">English</option>
                                 <option value="Tamil">Tamil</option>
@@ -92,7 +92,7 @@ export default function GenerateBriefingPage() {
                         <button
                             onClick={handleGenerate}
                             disabled={isLoading}
-                            className="w-full py-4 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-md disabled:opacity-70"
+                            className="w-full py-4 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all bg-blue-700"
                         >
                             {isLoading ? <Loader2 className="animate-spin" size={20} /> : <Zap size={20} />}
                             {isLoading ? "Synthesizing Intelligence..." : "Generate Official Briefing"}
