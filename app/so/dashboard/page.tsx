@@ -78,7 +78,7 @@ export default function StationOfficerDashboard() {
           }}>
 
             {/* Start Duty Briefing */}
-            <Link href="/dashboard/so/briefing/generate" style={{ textDecoration: "none", display: "block" }}>
+            <Link href="/so/briefing/generate" style={{ textDecoration: "none", display: "block" }}>
               <div
                 style={{
                   backgroundColor: "#ffffff", border: "1px solid #e2e8f0",
@@ -107,7 +107,7 @@ export default function StationOfficerDashboard() {
             </Link>
 
             {/* Briefing Archive */}
-            <Link href="/dashboard/so/briefing/history" style={{ textDecoration: "none", display: "block" }}>
+            <Link href="/so/briefing/history" style={{ textDecoration: "none", display: "block" }}>
               <div
                 style={{
                   backgroundColor: "#ffffff", border: "1px solid #e2e8f0",
