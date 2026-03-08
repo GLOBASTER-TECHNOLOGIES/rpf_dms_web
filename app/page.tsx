@@ -6,7 +6,7 @@ import { Users, AlertTriangle, Lock } from "lucide-react";
 export default function Home() {
   const roles = [
     {
-      title: "Supervising Officer",
+      title: "SO's",
       href: "/so/dashboard",
       icon: Users,
       color: "text-blue-600",
