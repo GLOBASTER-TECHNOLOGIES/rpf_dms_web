@@ -13,7 +13,7 @@ const AI_SUMMARY =
   "Srirangam Festival is driving heavy footfall today — ~25,000+ expected at Trichy Junction. Platforms 1–3 are high-priority. 3 extra units are deployed and valid until 22:00 hrs. Review your Briefing for updated standing orders, and file your Debriefing report before end of shift.";
 
 const modules = [
-  { href: "/duty-officer/briefing",          icon: FileSearch, label: "Briefing",           badge: "3 New Alerts",   color: "blue"  },
+  // { href: "/duty-officer/briefing",          icon: FileSearch, label: "Briefing",           badge: "3 New Alerts",   color: "blue"  },
   { href: "/duty-officer/view-train-details", icon: Train,      label: "Train Intelligence",  badge: "Next: 06:45 AM", color: "teal"  },
   { href: "/duty-officer/debriefing",         icon: Mic,        label: "Debriefing",          badge: "Pending Report", color: "amber" },
   { href: "/duty-officer/view-circulars",     icon: FileText,   label: "HQ Circulars",        badge: "2 Unread",       color: "blue"  },
