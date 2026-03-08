@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Search, Calendar, Clock } from "lucide-react";
+import { ArrowLeft, Search, Calendar, Clock, X } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 
@@ -17,6 +17,7 @@ export default function BriefingHistoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [briefings, setBriefings] = useState<Briefing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedScript, setSelectedScript] = useState<string | null>(null);
 
   /* Fetch briefing history */
   useEffect(() => {
@@ -54,7 +55,7 @@ export default function BriefingHistoryPage() {
             className="inline-flex items-center text-sm font-semibold text-slate-500 hover:text-blue-700 transition-colors mb-6"
           >
             <ArrowLeft size={16} className="mr-2" />
-            Back to Dashboard
+            Back to Command Center
           </Link>
 
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
@@ -78,10 +79,9 @@ export default function BriefingHistoryPage() {
           />
         </div>
 
-        {/* History Table */}
+        {/* Table */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
 
-          {/* Table Header */}
           <div className="hidden md:grid grid-cols-4 bg-slate-100 p-4 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
             <div>Date</div>
             <div>Shift</div>
@@ -89,14 +89,12 @@ export default function BriefingHistoryPage() {
             <div className="text-right">Action</div>
           </div>
 
-          {/* Loading */}
           {loading && (
             <div className="p-10 text-center text-slate-500">
               Loading briefing history...
             </div>
           )}
 
-          {/* Data */}
           <div className="divide-y divide-slate-100">
             {!loading &&
               filteredBriefings.map((briefing) => (
@@ -104,29 +102,23 @@ export default function BriefingHistoryPage() {
                   key={briefing._id}
                   className="grid md:grid-cols-4 gap-3 md:gap-0 items-start md:items-center p-4 hover:bg-slate-50 transition-colors"
                 >
-                  {/* Date */}
                   <div className="flex items-center gap-2 text-slate-800 font-semibold">
                     <Calendar size={16} className="text-slate-400" />
                     {new Date(briefing.dutyDate).toLocaleDateString()}
                   </div>
 
-                  {/* Shift */}
                   <div className="flex items-center gap-2 text-slate-700">
                     <Clock size={16} className="text-slate-400" />
                     {briefing.shift}
                   </div>
 
-                  {/* Language */}
                   <div className="text-slate-600">
                     {briefing.language}
                   </div>
 
-                  {/* Action */}
                   <div className="md:text-right">
                     <button
-                      onClick={() =>
-                        alert(briefing.generatedScript)
-                      }
+                      onClick={() => setSelectedScript(briefing.generatedScript)}
                       className="text-blue-600 font-bold hover:text-blue-800 text-sm"
                     >
                       View Script
@@ -136,7 +128,6 @@ export default function BriefingHistoryPage() {
               ))}
           </div>
 
-          {/* Empty State */}
           {!loading && filteredBriefings.length === 0 && (
             <div className="p-10 text-center text-slate-500">
               No historical briefings found.
@@ -144,6 +135,72 @@ export default function BriefingHistoryPage() {
           )}
         </div>
       </div>
+
+      {/* SCRIPT MODAL */}
+      {selectedScript && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+
+          <div className="bg-white max-w-4xl w-full rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">
+                  Shift Briefing Script
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Generated operational briefing
+                </p>
+              </div>
+
+              <button
+                onClick={() => setSelectedScript(null)}
+                className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-red-500 transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Script Content */}
+            <div className="px-6 py-6 max-h-[70vh] overflow-y-auto">
+
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-6
+                              text-[16px]
+                              leading-8
+                              text-slate-700
+                              whitespace-pre-wrap
+                              break-words
+                              overflow-hidden">
+
+                {selectedScript}
+
+              </div>
+
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-200">
+
+              <button
+                onClick={() => navigator.clipboard.writeText(selectedScript)}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900"
+              >
+                Copy
+              </button>
+
+              <button
+                onClick={() => window.print()}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition"
+              >
+                Print
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
     </div>
   );
 }
