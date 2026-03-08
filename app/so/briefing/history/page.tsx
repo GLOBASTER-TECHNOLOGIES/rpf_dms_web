@@ -20,7 +20,7 @@ export default function BriefingHistoryPage() {
         
         {/* Top Navigation */}
         <div>
-          <Link href="/dashboard/so" className="inline-flex items-center text-sm font-semibold text-slate-500 hover:text-blue-700 transition-colors mb-6">
+          <Link href="/so/dashboard/" className="inline-flex items-center text-sm font-semibold text-slate-500 hover:text-blue-700 transition-colors mb-6">
             <ArrowLeft size={16} className="mr-2" /> Back to Command Center
           </Link>
           <h1 className="text-3xl font-bold text-slate-900">Briefing Archive</h1>
@@ -48,7 +48,7 @@ export default function BriefingHistoryPage() {
             <div className="text-right">Action</div>
           </div>
           
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y  divide-slate-100">
             {MOCK_HISTORY.map((briefing) => (
               <div key={briefing._id} className="grid grid-cols-4 items-center p-4 hover:bg-slate-50 transition-colors">
                 <div className="flex items-center gap-2 text-slate-800 font-semibold">
