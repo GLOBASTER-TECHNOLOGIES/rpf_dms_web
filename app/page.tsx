@@ -35,12 +35,12 @@ export default function Home() {
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-6">
 
       {/* Title */}
-      <h1 className="text-2xl font-bold text-slate-800 mb-10">
+      <h1 className="text-3xl font-bold text-slate-800 mb-10">
         RPF DMS Portal
       </h1>
 
-      {/* Tiles */}
-      <div className="flex flex-col sm:grid sm:grid-cols-3 gap-6 max-w-xl w-28">
+      {/* Vertical Tiles */}
+      <div className="flex flex-col gap-5 w-full max-w-xs">
         {roles.map((role) => {
           const Icon = role.icon;
 
@@ -48,7 +48,7 @@ export default function Home() {
             <Link
               key={role.href}
               href={role.href}
-              className="group bg-white rounded-xl border border-slate-200 p-6 flex flex-col items-center justify-center text-center hover:shadow-md transition"
+              className="group bg-white rounded-xl border border-slate-200 p-6 flex flex-col items-center justify-center text-center hover:shadow-md hover:-translate-y-1 transition"
             >
               {/* Icon */}
               <div
