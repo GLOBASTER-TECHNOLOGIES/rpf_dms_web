@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { AlertTriangle, Zap, Loader2, ShieldCheck, ShieldAlert, Clock } from "lucide-react";
-import BottomNav from "@/components/dutyOfficer/BottomNav"; // Ensure this path matches where you saved the Nav
 
 // Mock Data
 const MOCK_TRAINS = [
