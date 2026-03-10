@@ -25,17 +25,19 @@ export async function POST(req: NextRequest) {
 
     if (!forceNumber || !password) {
       return NextResponse.json(
-        { message: "Force number and password are required" },
-        { status: 400 },
+        { success: false, message: "Force number and password are required" },
+        { status: 400 }
       );
     }
 
-    const officer = await Officer.findOne({ forceNumber }).select("+password");
+    const officer = await Officer.findOne({ forceNumber })
+      .select("+password")
+      .lean();
 
     if (!officer || !officer.active) {
       return NextResponse.json(
-        { message: "Invalid credentials or account inactive" },
-        { status: 401 },
+        { success: false, message: "Invalid credentials or account inactive" },
+        { status: 401 }
       );
     }
 
@@ -43,46 +45,53 @@ export async function POST(req: NextRequest) {
 
     if (!isMatch) {
       return NextResponse.json(
-        { message: "Invalid credentials" },
-        { status: 401 },
+        { success: false, message: "Invalid credentials" },
+        { status: 401 }
       );
     }
 
-    const accessToken = generateAccessToken(officer.id);
-    const refreshToken = generateRefreshToken(officer.id);
+    // Generate Tokens
+    const accessToken = generateAccessToken(officer._id.toString());
+    const refreshToken = generateRefreshToken(officer._id.toString());
 
-    officer.refreshToken = refreshToken;
-    await officer.save();
+    // Save refresh token
+    await Officer.findByIdAndUpdate(officer._id, { refreshToken });
 
+    // Create response
     const response = NextResponse.json(
       {
+        success: true,
         message: "Login successful",
+
         officer: {
-          id: officer.id,
+          id: officer._id,
           name: officer.name,
           forceNumber: officer.forceNumber,
           rank: officer.rank,
           role: officer.role,
         },
+
+        // IMPORTANT: return tokens for mobile apps
+        accessToken,
+        refreshToken,
       },
-      { status: 200 },
+      { status: 200 }
     );
 
-    // Set Access Token Cookie
+    // Cookie for web dashboard
     response.cookies.set("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 60 * 15, // 15 minutes
+      sameSite: "lax",
+      maxAge: 60 * 15,
       path: "/",
     });
 
-    // Set Refresh Token Cookie
     response.cookies.set("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
       path: "/",
     });
 
@@ -91,8 +100,11 @@ export async function POST(req: NextRequest) {
     console.error("LOGIN ERROR:", error);
 
     return NextResponse.json(
-      { message: "Server error", error },
-      { status: 500 },
+      {
+        success: false,
+        message: "Server error",
+      },
+      { status: 500 }
     );
   }
 }
