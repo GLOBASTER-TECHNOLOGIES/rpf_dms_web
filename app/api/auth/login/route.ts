@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import Officer from "@/models/Officer.model"; // Adjust the import path to your model
-import connectDB from "@/config/dbConnect"; // Adjust path to your database connection utility
+import Officer from "@/models/Officer.model";
+import connectDB from "@/config/dbConnect";
 
 const generateAccessToken = (id: string) => {
   return jwt.sign({ id }, process.env.JWT_ACCESS_SECRET as string, {
@@ -19,10 +19,19 @@ const generateRefreshToken = (id: string) => {
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
+
     const body = await req.json();
     const { forceNumber, password } = body;
 
+    if (!forceNumber || !password) {
+      return NextResponse.json(
+        { message: "Force number and password are required" },
+        { status: 400 },
+      );
+    }
+
     const officer = await Officer.findOne({ forceNumber }).select("+password");
+
     if (!officer || !officer.active) {
       return NextResponse.json(
         { message: "Invalid credentials or account inactive" },
@@ -31,6 +40,7 @@ export async function POST(req: NextRequest) {
     }
 
     const isMatch = await bcrypt.compare(password, officer.password);
+
     if (!isMatch) {
       return NextResponse.json(
         { message: "Invalid credentials" },
@@ -44,11 +54,9 @@ export async function POST(req: NextRequest) {
     officer.refreshToken = refreshToken;
     await officer.save();
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         message: "Login successful",
-        accessToken,
-        refreshToken,
         officer: {
           id: officer.id,
           name: officer.name,
@@ -59,7 +67,29 @@ export async function POST(req: NextRequest) {
       },
       { status: 200 },
     );
+
+    // Set Access Token Cookie
+    response.cookies.set("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 60 * 15, // 15 minutes
+      path: "/",
+    });
+
+    // Set Refresh Token Cookie
+    response.cookies.set("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: "/",
+    });
+
+    return response;
   } catch (error) {
+    console.error("LOGIN ERROR:", error);
+
     return NextResponse.json(
       { message: "Server error", error },
       { status: 500 },
