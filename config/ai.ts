@@ -12,8 +12,8 @@ interface BriefingContext {
   date: string;
   activeCirculars: any[];
   activeThreats: any[];
-  activeInstructions: any[]; // New context array added
-  // trainSchedule: any[]; // Uncomment when you add the train DB
+  activeInstructions: any[];
+  trainSchedule: any[]; // Uncommented and activated
 }
 
 export async function generateBriefingScript(
@@ -27,7 +27,7 @@ export async function generateBriefingScript(
     activeCirculars,
     activeThreats,
     activeInstructions,
-    // trainSchedule,
+    trainSchedule, // Destructured
   } = context;
 
   const systemPrompt = `
@@ -68,7 +68,7 @@ export async function generateBriefingScript(
        }
 
     4. TRAIN-WISE INSTRUCTIONS:
-       - Summarize security requirements for the first 3 trains listed in the 'Train Schedule' JSON.
+       - Summarize security requirements, platform numbers, and timings for the first 3 trains listed in the 'Train Schedule' JSON.
        ${
          language === "English"
            ? `- If empty, output EXACTLY: "- Maintain standard platform monitoring protocols for all arriving trains."`
@@ -102,7 +102,7 @@ export async function generateBriefingScript(
     ${JSON.stringify(activeInstructions, null, 2)}
     
     Train Schedule:
-    [] 
+    ${JSON.stringify(trainSchedule, null, 2)} 
     
     Active Threat Forecasts:
     ${JSON.stringify(activeThreats, null, 2)}
