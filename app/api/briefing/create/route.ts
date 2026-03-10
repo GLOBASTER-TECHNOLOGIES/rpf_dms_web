@@ -154,17 +154,17 @@ export async function POST(req: NextRequest) {
 
     console.log("Filtered trains:", shiftTrains);
 
-    const generatedScript = "ASD";
-    // const generatedScript = await generateBriefingScript({
-    //   post,
-    //   shift,
-    //   language,
-    //   date: today.toDateString(),
-    //   activeCirculars,
-    //   activeThreats,
-    //   activeInstructions,
-    //   trainSchedule: shiftTrains,
-    // });
+    // const generatedScript = "ASD";
+    const generatedScript = await generateBriefingScript({
+      post,
+      shift,
+      language,
+      date: today.toDateString(),
+      activeCirculars,
+      activeThreats,
+      activeInstructions,
+      trainSchedule: shiftTrains,
+    });
 
     // Create briefing using the securely retrieved Officer ID
     const briefing = await Briefing.create({
