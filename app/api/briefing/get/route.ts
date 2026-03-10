@@ -49,7 +49,7 @@ export async function GET(req: Request) {
       success: true,
       count: briefings.length,
       data: briefings,
-    });
+        });
   } catch (error) {
     console.error(error);
 
