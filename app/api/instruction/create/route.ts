@@ -25,8 +25,17 @@ export async function POST(req: Request) {
       process.env.JWT_ACCESS_SECRET as string
     );
 
+    const validFrom = new Date(body.validFrom);
+    const validTo = new Date(body.validTo);
+
+    // Ensure full day coverage
+    validFrom.setHours(0, 0, 0, 0);
+    validTo.setHours(23, 59, 59, 999);
+
     const instruction = await Instruction.create({
       ...body,
+      validFrom,
+      validTo,
       createdBy: decoded.id,
     });
 
