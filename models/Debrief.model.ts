@@ -15,7 +15,7 @@ const DebriefSchema = new Schema<IDebrief>(
   {
     staffId: {
       type: Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Officer",
     },
 
     shift: String,
