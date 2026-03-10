@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 
 function getCurrentShift(): "Morning" | "Afternoon" | "Night" {
     const hour = new Date().getHours();
+
     if (hour >= 6 && hour < 14) return "Morning";
     if (hour >= 14 && hour < 22) return "Afternoon";
     return "Night";
