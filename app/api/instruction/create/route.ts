@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/config/dbConnect";
 import Instruction from "@/models/Instruction.model";
+import jwt from "jsonwebtoken";
+import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
   try {
@@ -8,16 +10,36 @@ export async function POST(req: Request) {
 
     const body = await req.json();
 
-    const instruction = await Instruction.create(body);
+    const cookieStore = await cookies();
+    const token = cookieStore.get("accessToken")?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const decoded: any = jwt.verify(
+      token,
+      process.env.JWT_ACCESS_SECRET as string
+    );
+
+    const instruction = await Instruction.create({
+      ...body,
+      createdBy: decoded.id,
+    });
 
     return NextResponse.json({
       success: true,
       data: instruction,
     });
 
-  } catch (error) {
+  } catch (error: any) {
+    console.error(error);
+
     return NextResponse.json(
-      { success: false, message: "Failed to create instruction" },
+      { success: false, message: error.message },
       { status: 500 }
     );
   }
