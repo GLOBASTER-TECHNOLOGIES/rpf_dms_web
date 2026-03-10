@@ -6,13 +6,10 @@ import {
   UserPlus,
   Loader2,
   Save,
-  Eye,
-  EyeOff,
   User,
   Hash,
   ShieldCheck,
   MapPin,
-  Lock,
   Layers,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -43,7 +40,9 @@ const Field = ({
       {required && <span className="text-red-400">*</span>}
     </label>
     <div className="relative flex items-center">
-      <span className="absolute left-4 text-slate-400 pointer-events-none">{icon}</span>
+      <span className="absolute left-4 text-slate-400 pointer-events-none">
+        {icon}
+      </span>
       {children}
     </div>
     {hint && <p className="text-xs text-slate-400 pl-1">{hint}</p>}
@@ -65,11 +64,9 @@ const CreateOfficer: React.FC<CreateOfficerProps> = ({ onSuccess }) => {
     division: "",
     postCode: "",
     postId: "",
-    password: "",
   });
 
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -79,6 +76,7 @@ const CreateOfficer: React.FC<CreateOfficerProps> = ({ onSuccess }) => {
     e.preventDefault();
     setLoading(true);
     toast.dismiss();
+
     try {
       const payload = {
         name: formData.name,
@@ -88,11 +86,13 @@ const CreateOfficer: React.FC<CreateOfficerProps> = ({ onSuccess }) => {
         division: formData.division,
         postCode: formData.postCode,
         postId: formData.postId || undefined,
-        password: formData.password,
       };
+
       const res = await axios.post("/api/officer/create", payload);
+
       if (res.status === 201) {
         toast.success("Officer created successfully");
+
         setFormData({
           name: "",
           forceNumber: "",
@@ -101,8 +101,8 @@ const CreateOfficer: React.FC<CreateOfficerProps> = ({ onSuccess }) => {
           division: "",
           postCode: "",
           postId: "",
-          password: "",
         });
+
         onSuccess();
       }
     } catch (err: any) {
@@ -117,14 +117,16 @@ const CreateOfficer: React.FC<CreateOfficerProps> = ({ onSuccess }) => {
     <div className="max-w-2xl mx-auto">
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
 
-        {/* ── Card Header ── */}
+        {/* Header */}
         <div className="px-9 py-7 bg-gradient-to-r from-blue-800 to-blue-900">
           <div className="flex items-center gap-4">
             <div className="p-2.5 bg-white/15 rounded-xl">
               <UserPlus className="text-white" size={24} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-white">Register Officer</h2>
+              <h2 className="text-2xl font-bold text-white">
+                Register Officer
+              </h2>
               <p className="text-blue-200 text-sm mt-0.5">
                 Add a new RPF personnel to the system
               </p>
@@ -134,11 +136,12 @@ const CreateOfficer: React.FC<CreateOfficerProps> = ({ onSuccess }) => {
 
         <form onSubmit={handleSubmit} className="px-9 py-8 space-y-7">
 
-          {/* ── Section: Personal Info ── */}
+          {/* Personal Info */}
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-5">
               Personal Information
             </p>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
 
               <Field label="Full Name" required icon={<User size={16} />}>
@@ -164,7 +167,9 @@ const CreateOfficer: React.FC<CreateOfficerProps> = ({ onSuccess }) => {
                   placeholder="e.g. RPF-00123"
                   className={`${inputCls} font-mono`}
                   value={formData.forceNumber}
-                  onChange={(e) => handleChange("forceNumber", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("forceNumber", e.target.value)
+                  }
                 />
               </Field>
 
@@ -173,11 +178,12 @@ const CreateOfficer: React.FC<CreateOfficerProps> = ({ onSuccess }) => {
 
           <div className="border-t border-slate-100" />
 
-          {/* ── Section: Role & Rank ── */}
+          {/* Role & Rank */}
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-5">
               Role & Rank
             </p>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
 
               <Field label="Rank" required icon={<ShieldCheck size={16} />}>
@@ -187,7 +193,9 @@ const CreateOfficer: React.FC<CreateOfficerProps> = ({ onSuccess }) => {
                   onChange={(e) => handleChange("rank", e.target.value)}
                 >
                   {RANKS.map((r) => (
-                    <option key={r} value={r}>{r}</option>
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
                   ))}
                 </select>
               </Field>
@@ -199,7 +207,9 @@ const CreateOfficer: React.FC<CreateOfficerProps> = ({ onSuccess }) => {
                   onChange={(e) => handleChange("role", e.target.value)}
                 >
                   {ROLES.map((r) => (
-                    <option key={r} value={r}>{r}</option>
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
                   ))}
                 </select>
               </Field>
@@ -209,12 +219,15 @@ const CreateOfficer: React.FC<CreateOfficerProps> = ({ onSuccess }) => {
 
           <div className="border-t border-slate-100" />
 
-          {/* ── Section: Assignment ── */}
+          {/* Assignment */}
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-5">
               Assignment
-              <span className="normal-case font-normal text-slate-300 ml-1">(optional)</span>
+              <span className="normal-case font-normal text-slate-300 ml-1">
+                (optional)
+              </span>
             </p>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
 
               <Field label="Division" icon={<Layers size={16} />}>
@@ -223,7 +236,9 @@ const CreateOfficer: React.FC<CreateOfficerProps> = ({ onSuccess }) => {
                   placeholder="e.g. TPJ"
                   className={`${inputCls} uppercase placeholder:normal-case`}
                   value={formData.division}
-                  onChange={(e) => handleChange("division", e.target.value.toUpperCase())}
+                  onChange={(e) =>
+                    handleChange("division", e.target.value.toUpperCase())
+                  }
                 />
               </Field>
 
@@ -233,45 +248,18 @@ const CreateOfficer: React.FC<CreateOfficerProps> = ({ onSuccess }) => {
                   placeholder="e.g. TPJ"
                   className={`${inputCls} uppercase placeholder:normal-case font-mono`}
                   value={formData.postCode}
-                  onChange={(e) => handleChange("postCode", e.target.value.toUpperCase())}
+                  onChange={(e) =>
+                    handleChange("postCode", e.target.value.toUpperCase())
+                  }
                 />
               </Field>
 
             </div>
           </div>
 
-          <div className="border-t border-slate-100" />
-
-          {/* ── Section: Security ── */}
-          <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-5">
-              Security
-            </p>
-
-            <Field label="Password" required icon={<Lock size={16} />} hint="Minimum 6 characters">
-              <input
-                type={showPassword ? "text" : "password"}
-                required
-                minLength={6}
-                placeholder="Set a secure password"
-                className={`${inputCls} pr-12`}
-                value={formData.password}
-                onChange={(e) => handleChange("password", e.target.value)}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 text-slate-400 hover:text-slate-600 transition"
-                tabIndex={-1}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </Field>
-
-          </div>
-
-          {/* ── Footer Buttons ── */}
+          {/* Footer */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+
             <button
               type="button"
               onClick={onSuccess}
@@ -279,6 +267,7 @@ const CreateOfficer: React.FC<CreateOfficerProps> = ({ onSuccess }) => {
             >
               Cancel
             </button>
+
             <button
               type="submit"
               disabled={loading}
@@ -291,8 +280,8 @@ const CreateOfficer: React.FC<CreateOfficerProps> = ({ onSuccess }) => {
               )}
               {loading ? "Creating..." : "Create Officer"}
             </button>
-          </div>
 
+          </div>
         </form>
       </div>
     </div>
