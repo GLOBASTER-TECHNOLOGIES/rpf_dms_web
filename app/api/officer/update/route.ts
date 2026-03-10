@@ -19,14 +19,14 @@ export async function PUT(req: Request) {
     if (!id) {
       return NextResponse.json(
         { success: false, message: "Officer ID required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         { success: false, message: "Invalid officer id" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -37,7 +37,7 @@ export async function PUT(req: Request) {
     if (resetPassword && newPassword) {
       return NextResponse.json(
         { success: false, message: "Invalid request" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -62,7 +62,7 @@ export async function PUT(req: Request) {
       if (newPassword.length < 6) {
         return NextResponse.json(
           { success: false, message: "Password must be at least 6 characters" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -76,19 +76,15 @@ export async function PUT(req: Request) {
     /* Update officer */
     /* -------------------------------- */
 
-    const updatedOfficer = await Officer.findByIdAndUpdate(
-      id,
-      updatePayload,
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+    const updatedOfficer = await Officer.findByIdAndUpdate(id, updatePayload, {
+      returnDocument: "after",
+      runValidators: true,
+    });
 
     if (!updatedOfficer) {
       return NextResponse.json(
         { success: false, message: "Officer not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -102,9 +98,8 @@ export async function PUT(req: Request) {
         message: "Officer updated successfully",
         data: updatedOfficer,
       },
-      { status: 200 }
+      { status: 200 },
     );
-
   } catch (error) {
     console.error("Officer update error:", error);
 
@@ -113,7 +108,7 @@ export async function PUT(req: Request) {
         success: false,
         message: "Failed to update officer",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
