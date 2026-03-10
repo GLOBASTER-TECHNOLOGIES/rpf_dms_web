@@ -24,6 +24,7 @@ const LoginPage = () => {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({ forceNumber, password }),
       });
 
@@ -32,9 +33,6 @@ const LoginPage = () => {
       if (!response.ok) {
         throw new Error(data.message || "Failed to login");
       }
-
-      localStorage.setItem("accessToken", data.accessToken);
-      localStorage.setItem("refreshToken", data.refreshToken);
 
       router.push("/duty-officer");
 
@@ -125,11 +123,10 @@ const LoginPage = () => {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 px-4 text-white font-semibold rounded-md transition-colors ${
-              loading
+            className={`w-full py-2 px-4 text-white font-semibold rounded-md transition-colors ${loading
                 ? "bg-blue-400 cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-700"
-            }`}
+              }`}
           >
             {loading ? "Signing in..." : "Sign In"}
           </button>
