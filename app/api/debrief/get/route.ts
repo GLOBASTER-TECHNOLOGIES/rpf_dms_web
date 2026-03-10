@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import Debrief from "@/models/Debrief.model";
 import connectDB from "@/config/dbConnect";
+import "@/models/Officer.model";
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,19 +13,24 @@ export async function GET(req: NextRequest) {
     if (!token) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     const decoded = jwt.verify(
       token,
-      process.env.JWT_ACCESS_SECRET as string
+      process.env.JWT_ACCESS_SECRET as string,
     ) as { id: string };
 
+    // Fetch debriefs and populate officer name
     const debriefs = await Debrief.find({ staffId: decoded.id })
+      .populate({
+        path: "staffId",
+        select: "name forceNumber rank", // fields from Officer model
+      })
       .sort({ createdAt: -1 })
       .lean();
-
+    console.log(debriefs);
     return NextResponse.json({
       success: true,
       data: debriefs,
@@ -34,7 +40,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(
       { success: false, message: "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
