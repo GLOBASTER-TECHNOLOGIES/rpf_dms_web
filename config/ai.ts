@@ -12,6 +12,7 @@ interface BriefingContext {
   date: string;
   activeCirculars: any[];
   activeThreats: any[];
+  activeInstructions: any[]; // New context array added
   // trainSchedule: any[]; // Uncomment when you add the train DB
 }
 
@@ -25,6 +26,7 @@ export async function generateBriefingScript(
     date,
     activeCirculars,
     activeThreats,
+    activeInstructions,
     // trainSchedule,
   } = context;
 
@@ -38,11 +40,11 @@ export async function generateBriefingScript(
     - Do not mix languages.
 
     CRITICAL RULES:
-    - NO HALLUCINATIONS. Do NOT invent train names, numbers, platforms, circulars, or threat events. If data is missing, use the default fallback text.
+    - NO HALLUCINATIONS. Do NOT invent train names, numbers, platforms, circulars, instructions, or threat events. If data is missing, use the default fallback text.
     - NO FLUFF. Keep descriptions concise and use professional law enforcement terminology.
     - NO MARKDOWN BOLDING. Do not use asterisks (**) for bolding. Output plain text only.
     - BULLET POINTS: Use ONLY the hyphen character (-) for bullet points.
-    - Output MUST be strictly formatted under the exact 5 headings requested below.
+    - Output MUST be strictly formatted under the exact 6 headings requested below.
 
     FORMAT AND DATA MAPPING INSTRUCTIONS:
 
@@ -51,29 +53,41 @@ export async function generateBriefingScript(
 
     2. PRIORITY ALERTS:
        - Summarize up to 3 key issues from the 'Active Circulars' JSON into concise, actionable bullet points.
-       ${language === "English" 
-         ? `- If empty, output EXACTLY: "- No active priority alerts for this shift."` 
-         : `- If empty, output the literal ${language} translation of: "- No active priority alerts for this shift."`
+       ${
+         language === "English"
+           ? `- If empty, output EXACTLY: "- No active priority alerts for this shift."`
+           : `- If empty, output the literal ${language} translation of: "- No active priority alerts for this shift."`
        }
 
-    3. TRAIN-WISE INSTRUCTIONS:
+    3. DAILY INSTRUCTIONS:
+       - Summarize the specific duty directives listed in the 'Active Instructions' JSON.
+       ${
+         language === "English"
+           ? `- If empty, output EXACTLY: "- No specific instructions provided for this shift."`
+           : `- If empty, output the literal ${language} translation of: "- No specific instructions provided for this shift."`
+       }
+
+    4. TRAIN-WISE INSTRUCTIONS:
        - Summarize security requirements for the first 3 trains listed in the 'Train Schedule' JSON.
-       ${language === "English" 
-         ? `- If empty, output EXACTLY: "- Maintain standard platform monitoring protocols for all arriving trains."` 
-         : `- If empty, output the literal ${language} translation of: "- Maintain standard platform monitoring protocols for all arriving trains."`
+       ${
+         language === "English"
+           ? `- If empty, output EXACTLY: "- Maintain standard platform monitoring protocols for all arriving trains."`
+           : `- If empty, output the literal ${language} translation of: "- Maintain standard platform monitoring protocols for all arriving trains."`
        }
 
-    4. SPECIAL FOCUS AREAS:
+    5. SPECIAL FOCUS AREAS:
        - Summarize crowd management or security advisories based on the 'Active Threat Forecasts' JSON.
-       ${language === "English" 
-         ? `- If empty, output EXACTLY: "- No special focus events scheduled for this shift."` 
-         : `- If empty, output the literal ${language} translation of: "- No special focus events scheduled for this shift."`
+       ${
+         language === "English"
+           ? `- If empty, output EXACTLY: "- No special focus events scheduled for this shift."`
+           : `- If empty, output the literal ${language} translation of: "- No special focus events scheduled for this shift."`
        }
 
-    5. CLOSING REMINDER:
-       ${language === "English" 
-         ? `- Output EXACTLY: "- Uphold duty, maintain discipline, and preserve public trust. Stay vigilant."` 
-         : `- Output the literal ${language} translation of the following sentence without rephrasing or adding jargon: "- Uphold duty, maintain discipline, and preserve public trust. Stay vigilant."`
+    6. CLOSING REMINDER:
+       ${
+         language === "English"
+           ? `- Output EXACTLY: "- Uphold duty, maintain discipline, and preserve public trust. Stay vigilant."`
+           : `- Output the literal ${language} translation of the following sentence without rephrasing or adding jargon: "- Uphold duty, maintain discipline, and preserve public trust. Stay vigilant."`
        }
 
     === RAW DATA ===
@@ -84,6 +98,9 @@ export async function generateBriefingScript(
     Active Circulars:
     ${JSON.stringify(activeCirculars, null, 2)}
     
+    Active Instructions:
+    ${JSON.stringify(activeInstructions, null, 2)}
+    
     Train Schedule:
     [] 
     
@@ -93,15 +110,16 @@ export async function generateBriefingScript(
 
   try {
     const completion = await groq.chat.completions.create({
-      model: "qwen/qwen3-32b", 
+      model: "qwen/qwen3-32b",
       messages: [
         { role: "system", content: systemPrompt },
         {
           role: "user",
-          content: "Generate the shift briefing script based on the provided context.",
+          content:
+            "Generate the shift briefing script based on the provided context.",
         },
       ],
-      temperature: 0.1, 
+      temperature: 0.1,
     });
 
     let generatedScript = completion.choices[0]?.message?.content;
@@ -112,13 +130,15 @@ export async function generateBriefingScript(
 
     // Clean up the output string to prevent Markdown or reasoning tags
     generatedScript = generatedScript
-      .replace(/<think>[\s\S]*?<\/think>/gi, "") 
-      .replace(/\*\*/g, "") 
+      .replace(/<think>[\s\S]*?<\/think>/gi, "")
+      .replace(/\*\*/g, "")
       .trim();
 
     return generatedScript;
   } catch (error: any) {
     console.error("Groq API Error:", error);
-    throw new Error(`AI Generation Failed: ${error.message || "Unknown error"}`);
+    throw new Error(
+      `AI Generation Failed: ${error.message || "Unknown error"}`,
+    );
   }
 }
