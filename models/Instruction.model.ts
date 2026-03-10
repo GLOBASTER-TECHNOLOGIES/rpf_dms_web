@@ -7,7 +7,6 @@ export interface IInstruction extends Document {
   validFrom: Date;
   validTo: Date;
   createdBy: mongoose.Types.ObjectId;
-  active: boolean;
 }
 
 const InstructionSchema = new Schema<IInstruction>(
@@ -44,15 +43,10 @@ const InstructionSchema = new Schema<IInstruction>(
       ref: "User",
       required: true,
     },
-
-    active: {
-      type: Boolean,
-      default: true,
-    },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 export default mongoose.models.Instruction ||
