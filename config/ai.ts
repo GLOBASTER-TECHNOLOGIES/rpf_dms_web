@@ -1,6 +1,5 @@
 import Groq from "groq-sdk";
 
-// Initialize Groq outside the function so it's not recreated on every call
 const groq = new Groq({
   apiKey: process.env.RPF_DMS_AI_KEY,
 });
@@ -13,7 +12,7 @@ interface BriefingContext {
   activeCirculars: any[];
   activeThreats: any[];
   activeInstructions: any[];
-  trainSchedule: any[]; // Uncommented and activated
+  trainSchedule: any[];
 }
 
 export async function generateBriefingScript(
@@ -27,85 +26,60 @@ export async function generateBriefingScript(
     activeCirculars,
     activeThreats,
     activeInstructions,
-    trainSchedule, // Destructured
+    trainSchedule,
   } = context;
+
+  // ── HARDCODED RPF DATA FROM PDFS & DSC DIRECTIVES ────────────────
+  const pdfDirectives = {
+    meriSaheli:
+      "Increase outreach to target passengers (Current average 26%, target 50%). Teams must be led by female staff; male staff to focus on soft skills.",
+    trainSafety:
+      "Alertness against miscreant activities (stone pelting) following locomotive windshield breakage incidents. Intensify patrolling in critical areas.",
+    vipMovement:
+      "High Alert: Movement of AGM and PCSC-cum-IG scheduled in the coming days. Ensure perfect turnout and security readiness at TPJ Post.",
+  };
 
   const systemPrompt = `
     You are a strict, data-driven intelligence AI for the Railway Protection Force (RPF).
-    Your task is to generate a factual, bulleted shift briefing based ONLY on the provided JSON data.
+    Your task is to generate a shift briefing with maximum readability.
 
-    LANGUAGE REQUIREMENT:
-    - The requested output language is: ${language}.
-    - The ENTIRE output, including ALL section headings, bullet points, and fallback text, MUST be written exclusively in ${language}.
-    - Do not mix languages.
+    LAYOUT RULES:
+    - Use clear section headings followed by an empty line.
+    - Separate each section with a dashed line (--------------------).
+    - Use double spacing between different sections to prevent paragraph bunching.
+    - Use bullet points (-) for all data points.
 
-    CRITICAL RULES:
-    - NO HALLUCINATIONS. Do NOT invent train names, numbers, platforms, circulars, instructions, or threat events. If data is missing, use the default fallback text.
-    - NO FLUFF. Keep descriptions concise and use professional law enforcement terminology.
-    - NO MARKDOWN BOLDING. Do not use asterisks (**) for bolding. Output plain text only.
-    - BULLET POINTS: Use ONLY the hyphen character (-) for bullet points.
-    - Output MUST be strictly formatted under the exact 6 headings requested below.
-
-    FORMAT AND DATA MAPPING INSTRUCTIONS:
+    LANGUAGE: ${language}. Headings and content must be exclusively in ${language}.
 
     1. OPENING:
-       - Greet the staff formally, and state the Shift, Date, and Post.
+       Formal greeting. State Post: ${post}, Shift: ${shift}, Date: ${date}.
 
-    2. PRIORITY ALERTS:
-       - Summarize up to 3 key issues from the 'Active Circulars' JSON into concise, actionable bullet points.
-       ${
-         language === "English"
-           ? `- If empty, output EXACTLY: "- No active priority alerts for this shift."`
-           : `- If empty, output the literal ${language} translation of: "- No active priority alerts for this shift."`
-       }
+    2. PRIORITY ALERTS (Factual/Safety):
+       - Summarize data from 'Active Circulars'.
+       - MANDATORY ALERT: ${pdfDirectives.trainSafety}
+       - If no other data, use standard fallback.
 
-    3. DAILY INSTRUCTIONS:
-       - Summarize the specific duty directives listed in the 'Active Instructions' JSON.
-       ${
-         language === "English"
-           ? `- If empty, output EXACTLY: "- No specific instructions provided for this shift."`
-           : `- If empty, output the literal ${language} translation of: "- No specific instructions provided for this shift."`
-       }
+    3. DAILY INSTRUCTIONS (Strategic):
+       - Summarize data from 'Active Instructions'.
+       - SR.DSC DIRECTIVE: ${pdfDirectives.vipMovement}
+       - MERI SAHELI: ${pdfDirectives.meriSaheli}
 
     4. TRAIN-WISE INSTRUCTIONS:
-       - Summarize security requirements, platform numbers, and timings for the first 3 trains listed in the 'Train Schedule' JSON.
-       ${
-         language === "English"
-           ? `- If empty, output EXACTLY: "- Maintain standard platform monitoring protocols for all arriving trains."`
-           : `- If empty, output the literal ${language} translation of: "- Maintain standard platform monitoring protocols for all arriving trains."`
-       }
+       - Summarize security for first 3 trains in 'Train Schedule'.
+       - Include platform and timing.
 
     5. SPECIAL FOCUS AREAS:
-       - Summarize crowd management or security advisories based on the 'Active Threat Forecasts' JSON.
-       ${
-         language === "English"
-           ? `- If empty, output EXACTLY: "- No special focus events scheduled for this shift."`
-           : `- If empty, output the literal ${language} translation of: "- No special focus events scheduled for this shift."`
-       }
+       - Identify hotspots for stone pelting or unauthorized entry.
+       - Use 'Active Threat Forecasts' JSON.
 
-    6. CLOSING REMINDER:
-       ${
-         language === "English"
-           ? `- Output EXACTLY: "- Uphold duty, maintain discipline, and preserve public trust. Stay vigilant."`
-           : `- Output the literal ${language} translation of the following sentence without rephrasing or adding jargon: "- Uphold duty, maintain discipline, and preserve public trust. Stay vigilant."`
-       }
+    6. CLOSING:
+       - "- Uphold duty, maintain discipline, and preserve public trust. Stay vigilant."
 
-    === RAW DATA ===
-    - Post: ${post}
-    - Shift: ${shift}
-    - Date: ${date}
-    
-    Active Circulars:
-    ${JSON.stringify(activeCirculars, null, 2)}
-    
-    Active Instructions:
-    ${JSON.stringify(activeInstructions, null, 2)}
-    
-    Train Schedule:
-    ${JSON.stringify(trainSchedule, null, 2)} 
-    
-    Active Threat Forecasts:
-    ${JSON.stringify(activeThreats, null, 2)}
+    === LIVE DATA ===
+    Circulars: ${JSON.stringify(activeCirculars)}
+    Instructions: ${JSON.stringify(activeInstructions)}
+    Schedule: ${JSON.stringify(trainSchedule)}
+    Threats: ${JSON.stringify(activeThreats)}
   `;
 
   try {
@@ -115,8 +89,7 @@ export async function generateBriefingScript(
         { role: "system", content: systemPrompt },
         {
           role: "user",
-          content:
-            "Generate the shift briefing script based on the provided context.",
+          content: "Generate the shift briefing with clear section spacing.",
         },
       ],
       temperature: 0.1,
@@ -124,11 +97,9 @@ export async function generateBriefingScript(
 
     let generatedScript = completion.choices[0]?.message?.content;
 
-    if (!generatedScript) {
-      throw new Error("Groq returned an empty response.");
-    }
+    if (!generatedScript) throw new Error("Empty response from AI.");
 
-    // Clean up the output string to prevent Markdown or reasoning tags
+    // Final cleanup to ensure no markdown bolding and no <think> tags
     generatedScript = generatedScript
       .replace(/<think>[\s\S]*?<\/think>/gi, "")
       .replace(/\*\*/g, "")
@@ -137,8 +108,6 @@ export async function generateBriefingScript(
     return generatedScript;
   } catch (error: any) {
     console.error("Groq API Error:", error);
-    throw new Error(
-      `AI Generation Failed: ${error.message || "Unknown error"}`,
-    );
+    throw new Error(`AI Generation Failed: ${error.message}`);
   }
 }
