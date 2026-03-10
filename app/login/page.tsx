@@ -34,7 +34,7 @@ const LoginPage = () => {
         throw new Error(data.message || "Failed to login");
       }
 
-      router.push("/duty-officer");
+      router.push("/admin");
 
     } catch (err: any) {
       setError(err.message);
