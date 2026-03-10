@@ -17,11 +17,23 @@ export async function PUT(req: Request) {
       );
     }
 
+    if (updateData.validFrom) {
+      const validFrom = new Date(updateData.validFrom);
+      validFrom.setHours(0, 0, 0, 0);
+      updateData.validFrom = validFrom;
+    }
+
+    if (updateData.validTo) {
+      const validTo = new Date(updateData.validTo);
+      validTo.setHours(23, 59, 59, 999);
+      updateData.validTo = validTo;
+    }
+
     const instruction = await Instruction.findByIdAndUpdate(_id, updateData, {
-      returnDocument: "after", // replaces deprecated new:true
+      returnDocument: "after",
       runValidators: true,
     });
-    console.log(instruction);
+
     if (!instruction) {
       return NextResponse.json(
         { success: false, message: "Instruction not found" },
