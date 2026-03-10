@@ -40,7 +40,7 @@ const InstructionSchema = new Schema<IInstruction>(
 
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Officer",
       required: true,
     },
   },
