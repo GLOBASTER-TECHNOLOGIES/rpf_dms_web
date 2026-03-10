@@ -9,7 +9,8 @@ export interface IOfficer extends Document {
   division: string;
   password: string;
   active: boolean;
-  refreshToken?: string; // Kept only the field definition
+  mustChangePassword: boolean;
+  refreshToken?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -17,13 +18,26 @@ export interface IOfficer extends Document {
 const OfficerSchema: Schema<IOfficer> = new Schema(
   {
     name: { type: String, required: true, trim: true },
-    forceNumber: { type: String, required: true, unique: true, index: true },
+
+    forceNumber: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+    },
+
     rank: {
       type: String,
       enum: ["DSC", "ASC", "IPF", "SI", "ASI", "HC", "CONSTABLE"],
       required: true,
     },
-    role: { type: String, enum: ["ADMIN", "SO", "STAFF"], required: true },
+
+    role: {
+      type: String,
+      enum: ["ADMIN", "SO", "STAFF"],
+      required: true,
+    },
+
     postCode: {
       type: String,
       ref: "Post",
@@ -31,15 +45,38 @@ const OfficerSchema: Schema<IOfficer> = new Schema(
       uppercase: true,
       trim: true,
     },
-    division: { type: String, required: true },
-    password: { type: String, required: true, select: false },
-    active: { type: Boolean, default: true },
-    refreshToken: { type: String, select: false },
+
+    division: {
+      type: String,
+      required: true,
+    },
+
+    password: {
+      type: String,
+      required: true,
+      select: false,
+    },
+
+    active: {
+      type: Boolean,
+      default: true,
+    },
+
+    mustChangePassword: {
+      type: Boolean,
+      default: true,
+    },
+
+    refreshToken: {
+      type: String,
+      select: false,
+    },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 const Officer: Model<IOfficer> =
-  mongoose.models.Officer || mongoose.model<IOfficer>("Officer", OfficerSchema);
+  mongoose.models.Officer ||
+  mongoose.model<IOfficer>("Officer", OfficerSchema);
 
 export default Officer;
