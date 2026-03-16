@@ -7,6 +7,10 @@ export interface IPost extends Document {
   ipfId?: mongoose.Types.ObjectId;
   contactNumber?: string;
   address?: string;
+
+  refreshToken?: string;
+  refreshTokenExpiresAt?: Date;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -45,6 +49,16 @@ const PostSchema: Schema<IPost> = new Schema(
 
     address: {
       type: String,
+    },
+
+    refreshToken: {
+      type: String,
+      select: false,
+    },
+
+    refreshTokenExpiresAt: {
+      type: Date,
+      select: false,
     },
   },
   {
