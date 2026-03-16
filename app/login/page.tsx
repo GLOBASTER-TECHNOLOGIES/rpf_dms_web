@@ -38,7 +38,14 @@ export default function LoginPage() {
         throw new Error(data.message || "Failed to login");
       }
 
-      router.push("/admin");
+      const role = data?.user?.role;
+
+      if (role === "post") {
+        router.push("/post");
+      } else {
+        router.push("/admin");
+      }
+
     } catch (err: any) {
       setError(err.message || "Login failed");
     } finally {
