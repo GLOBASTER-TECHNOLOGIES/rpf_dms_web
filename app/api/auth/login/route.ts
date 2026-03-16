@@ -2,16 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Officer from "@/models/Officer.model";
+import Post from "@/models/Post.model";
 import connectDB from "@/config/dbConnect";
 
-const generateAccessToken = (id: string) => {
-  return jwt.sign({ id }, process.env.JWT_ACCESS_SECRET as string, {
+const generateAccessToken = (id: string, role: string) => {
+  return jwt.sign({ id, role }, process.env.JWT_ACCESS_SECRET as string, {
     expiresIn: "15m",
   });
 };
 
-const generateRefreshToken = (id: string) => {
-  return jwt.sign({ id }, process.env.JWT_REFRESH_SECRET as string, {
+const generateRefreshToken = (id: string, role: string) => {
+  return jwt.sign({ id, role }, process.env.JWT_REFRESH_SECRET as string, {
     expiresIn: "7d",
   });
 };
@@ -21,64 +22,99 @@ export async function POST(req: NextRequest) {
     await connectDB();
 
     const body = await req.json();
-    const { forceNumber, password } = body;
+    const { identifier, password } = body;
 
-    if (!forceNumber || !password) {
+    if (!identifier || !password) {
       return NextResponse.json(
-        { success: false, message: "Force number and password are required" },
-        { status: 400 }
+        { success: false, message: "Identifier and password required" },
+        { status: 400 },
       );
     }
 
-    const officer = await Officer.findOne({ forceNumber })
-      .select("+password")
-      .lean();
+    let user: any = null;
+    let role: "officer" | "post";
 
-    if (!officer || !officer.active) {
-      return NextResponse.json(
-        { success: false, message: "Invalid credentials or account inactive" },
-        { status: 401 }
-      );
+    // Check if identifier contains only numbers
+    const isOfficerLogin = /^\d+$/.test(identifier);
+
+    if (isOfficerLogin) {
+      role = "officer";
+
+      user = await Officer.findOne({ forceNumber: identifier })
+        .select("+password")
+        .lean();
+
+      if (!user || !user.active) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Invalid credentials or account inactive",
+          },
+          { status: 401 },
+        );
+      }
+    } else {
+      role = "post";
+
+      user = await Post.findOne({ postCode: identifier })
+        .select("+password")
+        .lean();
+
+      if (!user) {
+        return NextResponse.json(
+          { success: false, message: "Invalid credentials" },
+          { status: 401 },
+        );
+      }
     }
 
-    const isMatch = await bcrypt.compare(password, officer.password);
+    const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
       return NextResponse.json(
         { success: false, message: "Invalid credentials" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
-    // Generate Tokens
-    const accessToken = generateAccessToken(officer._id.toString());
-    const refreshToken = generateRefreshToken(officer._id.toString());
+    // Generate tokens
+    const accessToken = generateAccessToken(user._id.toString(), role);
+    const refreshToken = generateRefreshToken(user._id.toString(), role);
 
     // Save refresh token
-    await Officer.findByIdAndUpdate(officer._id, { refreshToken });
+    if (role === "officer") {
+      await Officer.findByIdAndUpdate(user._id, { refreshToken });
+    } else {
+      await Post.findByIdAndUpdate(user._id, { refreshToken });
+    }
 
-    // Create response
     const response = NextResponse.json(
       {
         success: true,
         message: "Login successful",
 
-        officer: {
-          id: officer._id,
-          name: officer.name,
-          forceNumber: officer.forceNumber,
-          rank: officer.rank,
-          role: officer.role,
+        user: {
+          id: user._id,
+          role,
+          ...(role === "officer"
+            ? {
+                name: user.name,
+                forceNumber: user.forceNumber,
+                rank: user.rank,
+              }
+            : {
+                postCode: user.postCode,
+                division: user.division,
+              }),
         },
 
-        // IMPORTANT: return tokens for mobile apps
         accessToken,
         refreshToken,
       },
-      { status: 200 }
+      { status: 200 },
     );
 
-    // Cookie for web dashboard
+    // Cookies for web dashboard
     response.cookies.set("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -100,11 +136,8 @@ export async function POST(req: NextRequest) {
     console.error("LOGIN ERROR:", error);
 
     return NextResponse.json(
-      {
-        success: false,
-        message: "Server error",
-      },
-      { status: 500 }
+      { success: false, message: "Server error" },
+      { status: 500 },
     );
   }
 }
