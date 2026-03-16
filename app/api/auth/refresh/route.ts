@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import Officer from "@/models/Officer.model";
+import Post from "@/models/Post.model";
 import connectDB from "@/config/dbConnect";
 
-const generateAccessToken = (id: string) => {
-  return jwt.sign({ id }, process.env.JWT_ACCESS_SECRET as string, {
+const generateAccessToken = (id: string, role: string) => {
+  return jwt.sign({ id, role }, process.env.JWT_ACCESS_SECRET as string, {
     expiresIn: "15m",
   });
 };
@@ -12,6 +13,7 @@ const generateAccessToken = (id: string) => {
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
+
     const body = await req.json();
     const { refreshToken } = body;
 
@@ -27,15 +29,27 @@ export async function POST(req: NextRequest) {
       process.env.JWT_REFRESH_SECRET as string,
     ) as any;
 
-    const officer = await Officer.findById(decoded.id).select("+refreshToken");
-    if (!officer || officer.refreshToken !== refreshToken) {
+    let user;
+
+    if (decoded.role === "officer") {
+      user = await Officer.findById(decoded.id).select("+refreshToken");
+    }
+
+    if (decoded.role === "post") {
+      user = await Post.findById(decoded.id).select("+refreshToken");
+    }
+
+    if (!user || user.refreshToken !== refreshToken) {
       return NextResponse.json(
         { message: "Invalid refresh token" },
         { status: 403 },
       );
     }
 
-    const newAccessToken = generateAccessToken(officer.id);
+    const newAccessToken = generateAccessToken(
+      user._id.toString(),
+      decoded.role,
+    );
 
     return NextResponse.json({ accessToken: newAccessToken }, { status: 200 });
   } catch (error) {
