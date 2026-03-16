@@ -64,14 +64,14 @@ const modules: Module[] = [
     accent: "hover:border-amber-400",
     iconBg: "bg-amber-50 text-amber-600",
   },
-  {
-    title: "Threat Forecast",
-    description: "Monitor upcoming risk assessments for RPF zones.",
-    href: "/admin/threatforecast",
-    icon: <CloudLightning size={20} />,
-    accent: "hover:border-red-400",
-    iconBg: "bg-red-50 text-red-600",
-  },
+  // {
+  //   title: "Threat Forecast",
+  //   description: "Monitor upcoming risk assessments for RPF zones.",
+  //   href: "/admin/threatforecast",
+  //   icon: <CloudLightning size={20} />,
+  //   accent: "hover:border-red-400",
+  //   iconBg: "bg-red-50 text-red-600",
+  // },
   {
     title: "Incidents",
     description: "Log and review security incidents reported across posts.",
