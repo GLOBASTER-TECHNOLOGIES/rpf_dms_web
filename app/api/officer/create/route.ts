@@ -11,14 +11,7 @@ export async function POST(req: Request) {
     // Removed password from destructuring since we are hardcoding it
     const { name, forceNumber, rank, role, postCode, division } = body;
 
-    if (
-      !name ||
-      !forceNumber ||
-      !rank ||
-      !role ||
-      !postCode ||
-      !division
-    ) {
+    if (!name || !forceNumber || !rank || !role || !postCode || !division) {
       return NextResponse.json(
         { success: false, message: "Missing required fields" },
         { status: 400 },
@@ -36,7 +29,7 @@ export async function POST(req: Request) {
 
     // 1. Generate salt and hash the default password
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash("1234567890", salt);
+    const hashedPassword = await bcrypt.hash("111111", salt);
 
     // 2. Create the officer with the hashed password
     const officer = await Officer.create({
@@ -58,7 +51,7 @@ export async function POST(req: Request) {
       role: officer.role,
       postCode: officer.postCode,
       division: officer.division,
-      active: officer.active
+      active: officer.active,
     };
 
     return NextResponse.json(
