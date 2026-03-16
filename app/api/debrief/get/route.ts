@@ -22,15 +22,26 @@ export async function GET(req: NextRequest) {
       process.env.JWT_ACCESS_SECRET as string,
     ) as { id: string };
 
-    // Fetch debriefs and populate officer name
-    const debriefs = await Debrief.find({ staffId: decoded.id })
+    // GET postcode from query
+    const postCode = req.nextUrl.searchParams.get("postCode");
+
+    // Build filter dynamically
+    const filter: any = {};
+
+    if (postCode) {
+      filter.postCode = postCode;
+    }
+
+    const debriefs = await Debrief.find(filter)
       .populate({
         path: "staffId",
-        select: "name forceNumber rank", // fields from Officer model
+        select: "name forceNumber rank",
       })
       .sort({ createdAt: -1 })
       .lean();
+
     console.log(debriefs);
+
     return NextResponse.json({
       success: true,
       data: debriefs,
