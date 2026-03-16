@@ -4,6 +4,7 @@ export interface IDebrief extends Document {
   staffId: mongoose.Types.ObjectId;
   shift: string;
   date: Date;
+  postCode?: string;
   transcript?: string;
   summary?: string;
   observations?: string;
@@ -20,6 +21,10 @@ const DebriefSchema = new Schema<IDebrief>(
 
     shift: String,
 
+    postCode: {
+      type: String,
+    },
+
     date: {
       type: Date,
       default: Date.now,
@@ -33,6 +38,11 @@ const DebriefSchema = new Schema<IDebrief>(
     observations: String,
 
     improvements: String,
+
+    approved: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true },
 );
