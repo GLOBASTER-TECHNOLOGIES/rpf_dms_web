@@ -59,7 +59,7 @@ const modules = [
         id: "debriefing",
         title: "Debriefing Reports",
         description: "Review post-duty debriefs, incident summaries and shift handover logs.",
-        route: "/post/view-debriefings",
+        route: "/post/debrefing-reports",
         icon: (
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 11l3 3L22 4" />
