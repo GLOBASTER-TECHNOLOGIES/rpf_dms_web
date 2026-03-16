@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import dbConnect from "@/config/dbConnect";
 import Post from "@/models/Post.model";
 
@@ -11,9 +12,9 @@ export async function POST(req: Request) {
     const { postCode, division, password, ipfId, contactNumber, address } =
       body;
 
-    if (!postCode || !division || !password) {
+    if (!postCode || !division) {
       return NextResponse.json(
-        { success: false, message: "Missing required fields" },
+        { success: false, message: "postCode and division are required" },
         { status: 400 },
       );
     }
@@ -27,18 +28,31 @@ export async function POST(req: Request) {
       );
     }
 
+    // Default password
+    const plainPassword = password || "111111";
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
     const post = await Post.create({
-      postCode,
-      division,
-      password,
+      postCode: postCode.toUpperCase(),
+      division: division.toUpperCase(),
+      password: hashedPassword,
       ipfId,
       contactNumber,
       address,
     });
 
-    return NextResponse.json({ success: true, data: post }, { status: 201 });
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Post created successfully",
+        data: post,
+      },
+      { status: 201 },
+    );
   } catch (error) {
-    console.error(error);
+    console.error("CREATE POST ERROR:", error);
 
     return NextResponse.json(
       { success: false, message: "Failed to create post" },
