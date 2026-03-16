@@ -8,56 +8,49 @@ export async function GET(req: NextRequest) {
   try {
     await connectDB();
 
-    const authHeader = req.headers.get("authorization");
+    const token = req.cookies.get("accessToken")?.value;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!token) {
       return NextResponse.json(
         { message: "Not authorized, no token" },
         { status: 401 },
       );
     }
 
-    const token = authHeader.split(" ")[1];
-
     const decoded = jwt.verify(
       token,
       process.env.JWT_ACCESS_SECRET as string,
     ) as { id: string; role: "officer" | "post" };
 
-    let user;
-
     if (decoded.role === "officer") {
-      user = await Officer.findById(decoded.id).select(
+      const officer = await Officer.findById(decoded.id).select(
         "-password -refreshToken",
       );
 
-      if (!user || !user.active) {
+      if (!officer || !officer.active) {
         return NextResponse.json(
-          { message: "Not authorized, officer inactive or not found" },
+          { message: "Officer inactive or not found" },
           { status: 401 },
         );
       }
 
-      return NextResponse.json({ officer: user }, { status: 200 });
+      return NextResponse.json({ officer });
     }
 
     if (decoded.role === "post") {
-      user = await Post.findById(decoded.id).select("-password -refreshToken");
+      const post = await Post.findById(decoded.id).select(
+        "-password -refreshToken",
+      );
 
-      if (!user) {
+      if (!post) {
         return NextResponse.json(
-          { message: "Not authorized, post not found" },
+          { message: "Post not found" },
           { status: 401 },
         );
       }
 
-      return NextResponse.json({ post: user }, { status: 200 });
+      return NextResponse.json({ post });
     }
-
-    return NextResponse.json(
-      { message: "Invalid token role" },
-      { status: 401 },
-    );
   } catch (error) {
     return NextResponse.json(
       { message: "Not authorized, token failed" },
