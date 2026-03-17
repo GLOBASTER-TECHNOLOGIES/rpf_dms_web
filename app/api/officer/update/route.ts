@@ -48,7 +48,7 @@ export async function PUT(req: Request) {
     /* -------------------------------- */
 
     if (resetPassword) {
-      const hashedPassword = await bcrypt.hash("1234567890", 10);
+      const hashedPassword = await bcrypt.hash("111111", 10);
 
       updatePayload.password = hashedPassword;
       updatePayload.mustChangePassword = true;
