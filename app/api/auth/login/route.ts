@@ -22,19 +22,19 @@ export async function POST(req: NextRequest) {
     await connectDB();
 
     const body = await req.json();
-    const { identifier, password } = body;
+
+    const { identifier, password, isMobile, deviceId, fcmToken } = body;
 
     if (!identifier || !password) {
       return NextResponse.json(
         { success: false, message: "Identifier and password required" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     let user: any = null;
     let role: "officer" | "post";
 
-    // Check if identifier contains only numbers
     const isOfficerLogin = /^\d+$/.test(identifier);
 
     if (isOfficerLogin) {
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
             success: false,
             message: "Invalid credentials or account inactive",
           },
-          { status: 401 },
+          { status: 401 }
         );
       }
     } else {
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       if (!user) {
         return NextResponse.json(
           { success: false, message: "Invalid credentials" },
-          { status: 401 },
+          { status: 401 }
         );
       }
     }
@@ -73,19 +73,44 @@ export async function POST(req: NextRequest) {
     if (!isMatch) {
       return NextResponse.json(
         { success: false, message: "Invalid credentials" },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
-    // Generate tokens
+    // ✅ Generate tokens
     const accessToken = generateAccessToken(user._id.toString(), role);
     const refreshToken = generateRefreshToken(user._id.toString(), role);
 
-    // Save refresh token
-    if (role === "officer") {
-      await Officer.findByIdAndUpdate(user._id, { refreshToken });
-    } else {
-      await Post.findByIdAndUpdate(user._id, { refreshToken });
+    // =========================
+    // 🔥 MOBILE LOGIN LOGIC
+    // =========================
+    if (isMobile && role === "officer") {
+      if (!deviceId || !fcmToken) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Device ID and FCM token required for mobile login",
+          },
+          { status: 400 }
+        );
+      }
+
+      await Officer.findByIdAndUpdate(user._id, {
+        refreshToken,
+        deviceId,
+        fcmToken,
+      });
+    }
+
+    // =========================
+    // 🌐 WEB LOGIN LOGIC
+    // =========================
+    if (!isMobile) {
+      if (role === "officer") {
+        await Officer.findByIdAndUpdate(user._id, { refreshToken });
+      } else {
+        await Post.findByIdAndUpdate(user._id, { refreshToken });
+      }
     }
 
     const response = NextResponse.json(
@@ -93,43 +118,49 @@ export async function POST(req: NextRequest) {
         success: true,
         message: "Login successful",
 
-        user: {
-          id: user._id,
-          role,
-          ...(role === "officer"
+        // ✅ CHANGED HERE
+        officer:
+          role === "officer"
             ? {
+                id: user._id,
+                role,
                 name: user.name,
                 forceNumber: user.forceNumber,
                 rank: user.rank,
               }
             : {
+                id: user._id,
+                role,
                 postCode: user.postCode,
                 division: user.division,
-              }),
-        },
+              },
 
         accessToken,
         refreshToken,
       },
-      { status: 200 },
+      { status: 200 }
     );
 
-    // Cookies for web dashboard
-    response.cookies.set("accessToken", accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 15,
-      path: "/",
-    });
+    // =========================
+    // 🍪 WEB COOKIES ONLY
+    // =========================
+    if (!isMobile) {
+      response.cookies.set("accessToken", accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 15,
+        path: "/",
+      });
 
-    response.cookies.set("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-      path: "/",
-    });
+      response.cookies.set("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+        path: "/",
+      });
+    }
 
     return response;
   } catch (error) {
@@ -137,7 +168,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(
       { success: false, message: "Server error" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
