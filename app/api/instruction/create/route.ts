@@ -4,13 +4,14 @@ import Instruction from "@/models/Instruction.model";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import admin from "@/config/firebaseAdmin";
+import Officer from "@/models/Officer.model";
 
 export async function POST(req: Request) {
   try {
     await dbConnect();
 
     const body = await req.json();
-
+    console.log(body);
     const cookieStore = await cookies();
     const token = cookieStore.get("accessToken")?.value;
 
@@ -39,32 +40,61 @@ export async function POST(req: Request) {
       createdBy: decoded.id,
     });
 
-    // 🔔 SEND NOTIFICATION
-    // 🔔 SEND NOTIFICATION (DIRECT TOKEN)
+    // =========================
+    // 🔔 SEND NOTIFICATIONS TO ALL OFFICERS
+    // =========================
     try {
-      const fcmToken =
-        "fqyrwcrPTaqvx1hPR4FK8v:APA91bGNHxbuuC1Y0HvMVUJsQ75YulO_cWGEueDu6C3mR4Yf7eCkpEm29bjZ9WsAVmL2IzEdHwIeoChvnHpDPW1YJRXQezMGBAxRML4jpgSZ0748PixzzKc";
+      // ✅ Get all officers with tokens
+      const officers = await Officer.find({
+        fcmToken: { $ne: null },
+      }).select("fcmToken");
 
-      await admin.messaging().send({
-        token: fcmToken, // 🔥 direct device
+      const tokens: string[] = officers
+        .map((o) => o.fcmToken)
+        .filter((t): t is string => !!t && t.length > 0);
 
-        notification: {
-          title: "📢 New Instruction",
-          body: body.title || "A new instruction has been issued",
-        },
+      if (tokens.length === 0) {
+        console.log("No FCM tokens found");
+      } else {
+        // 🔥 Send multicast notification
+        const response = await admin.messaging().sendEachForMulticast({
+          tokens,
 
-        data: {
-          type: "instruction",
-          instructionId: instruction._id.toString(),
-        },
-
-        android: {
-          priority: "high",
           notification: {
-            channelId: "high_importance_channel", // 🔥 must match Flutter
+            title: body.title,
+            body: body.instruction || "A new instruction has been issued",
           },
-        },
-      });
+
+          data: {
+            type: "instruction",
+            instructionId: instruction._id.toString(),
+          },
+
+          android: {
+            priority: "high",
+            notification: {
+              channelId: "high_importance_channel",
+            },
+          },
+        });
+
+        // ✅ Clean invalid tokens (VERY IMPORTANT)
+        const invalidTokens: string[] = [];
+
+        response.responses.forEach((res, idx) => {
+          if (!res.success) {
+            console.log("Failed token:", tokens[idx], res.error);
+            invalidTokens.push(tokens[idx]);
+          }
+        });
+
+        if (invalidTokens.length > 0) {
+          await Officer.updateMany(
+            { fcmToken: { $in: invalidTokens } },
+            { $set: { fcmToken: null } },
+          );
+        }
+      }
     } catch (err) {
       console.error("Notification Error:", err);
     }
