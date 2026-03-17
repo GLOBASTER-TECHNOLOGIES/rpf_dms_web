@@ -10,7 +10,12 @@ export interface IOfficer extends Document {
   password: string;
   active: boolean;
   mustChangePassword: boolean;
+
+  // 🔐 Auth + Device
   refreshToken?: string;
+  deviceId?: string;
+  fcmToken?: string;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -67,9 +72,22 @@ const OfficerSchema: Schema<IOfficer> = new Schema(
       default: true,
     },
 
+    // 🔐 Refresh token (for session)
     refreshToken: {
       type: String,
       select: false,
+    },
+
+    // 📱 Device lock (single login)
+    deviceId: {
+      type: String,
+      default: null,
+    },
+
+    // 🔔 Push notifications
+    fcmToken: {
+      type: String,
+      default: null,
     },
   },
   { timestamps: true }
