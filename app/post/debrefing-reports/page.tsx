@@ -216,7 +216,13 @@ export default function ViewDebriefings() {
                                         </div>
 
                                         <div style={{ backgroundColor: "#fff", padding: "20px", borderRadius: "12px", border: "1px solid #e2e8f0", lineHeight: "1.6", color: "#334155", minHeight: "100px" }}>
-                                            {d[currentTab as keyof IDebrief] || `No ${currentTab} available for this report.`}
+                                            {(() => {
+                                                const value = d[currentTab as keyof IDebrief];
+                                                if (!value) return `No ${currentTab} available for this report.`;
+                                                if (value instanceof Date) return value.toLocaleString();
+                                                if (typeof value === "object") return JSON.stringify(value, null, 2);
+                                                return String(value);
+                                            })()}
                                         </div>
 
                                         <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
