@@ -7,7 +7,7 @@ import connectDB from "@/config/dbConnect";
 
 const generateAccessToken = (id: string, role: string) => {
   return jwt.sign({ id, role }, process.env.JWT_ACCESS_SECRET as string, {
-    expiresIn: "15m",
+    expiresIn: "1h",
   });
 };
 
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     if (!identifier || !password) {
       return NextResponse.json(
         { success: false, message: "Identifier and password required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
             success: false,
             message: "Invalid credentials or account inactive",
           },
-          { status: 401 }
+          { status: 401 },
         );
       }
     } else {
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       if (!user) {
         return NextResponse.json(
           { success: false, message: "Invalid credentials" },
-          { status: 401 }
+          { status: 401 },
         );
       }
     }
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     if (!isMatch) {
       return NextResponse.json(
         { success: false, message: "Invalid credentials" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
             success: false,
             message: "Device ID and FCM token required for mobile login",
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
         accessToken,
         refreshToken,
       },
-      { status: 200 }
+      { status: 200 },
     );
 
     // =========================
@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
-        maxAge: 60 * 15,
+        maxAge: 60 * 60,
         path: "/",
       });
 
@@ -168,7 +168,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(
       { success: false, message: "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
