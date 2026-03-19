@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import {
     AlertTriangle, Plus, RefreshCw, Train, Search,
     ChevronDown, ChevronUp, Edit2, Trash2, ShieldAlert,
-    TrendingUp, Activity, X, Save,
+    TrendingUp, Activity, X, Save, ArrowLeft
 } from "lucide-react";
 import { ITrainCrimeIntelligence } from "@/models/TrainCrimeIntelligence";
 import CreateTrainIntelForm from "@/components/trainCrimeIntel/Createtrainintelform";
@@ -15,11 +16,11 @@ type SortField = "trainNumber" | "riskLevel" | "totalIncidents" | "updatedAt";
 type SortDir = "asc" | "desc";
 
 const RISK_META: Record<RiskLevel, { label: string; bg: string; text: string; border: string; dot: string }> = {
-    CRITICAL: { label: "Critical",  bg: "bg-red-100",    text: "text-red-800",    border: "border-red-200",    dot: "bg-red-600" },
-    HIGH:     { label: "High",      bg: "bg-orange-100", text: "text-orange-800", border: "border-orange-200", dot: "bg-orange-500" },
-    MEDIUM:   { label: "Medium",    bg: "bg-amber-100",  text: "text-amber-800",  border: "border-amber-200",  dot: "bg-amber-500" },
-    LOW:      { label: "Low",       bg: "bg-emerald-100",text: "text-emerald-800",border: "border-emerald-200",dot: "bg-emerald-500" },
-    "N/A":    { label: "N/A",       bg: "bg-slate-100",  text: "text-slate-600",  border: "border-slate-200",  dot: "bg-slate-400" },
+    CRITICAL: { label: "Critical", bg: "bg-red-100", text: "text-red-800", border: "border-red-200", dot: "bg-red-600" },
+    HIGH: { label: "High", bg: "bg-orange-100", text: "text-orange-800", border: "border-orange-200", dot: "bg-orange-500" },
+    MEDIUM: { label: "Medium", bg: "bg-amber-100", text: "text-amber-800", border: "border-amber-200", dot: "bg-amber-500" },
+    LOW: { label: "Low", bg: "bg-emerald-100", text: "text-emerald-800", border: "border-emerald-200", dot: "bg-emerald-500" },
+    "N/A": { label: "N/A", bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200", dot: "bg-slate-400" },
 };
 
 const RISK_ORDER: Record<RiskLevel, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3, "N/A": 4 };
@@ -132,15 +133,26 @@ export default function TrainCrimeIntelligencePage() {
             {/* ── Header ── */}
             <div className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10">
                 <div className="max-w-screen-xl mx-auto flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-md shadow-blue-200">
-                            <Train className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-base font-black text-slate-900 leading-tight tracking-tight">
-                                Train Crime Intelligence
-                            </h1>
-                            <p className="text-xs font-medium text-slate-500">RPF · Risk & RA Case Registry</p>
+                    <div className="flex items-center gap-4">
+                        {/* ── Back Button ── */}
+                        <Link
+                            href="/admin"
+                            className="p-2 -ml-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors flex items-center justify-center"
+                            title="Back to Admin"
+                        >
+                            <ArrowLeft className="w-5 h-5" />
+                        </Link>
+
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-md shadow-blue-200">
+                                <Train className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                                <h1 className="text-base font-black text-slate-900 leading-tight tracking-tight">
+                                    Train Crime Intelligence
+                                </h1>
+                                <p className="text-xs font-medium text-slate-500">RPF · Risk & RA Case Registry</p>
+                            </div>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -225,14 +237,14 @@ export default function TrainCrimeIntelligencePage() {
                                 <thead>
                                     <tr className="border-b border-slate-200 bg-slate-50">
                                         {([
-                                            { label: "Train No.",  field: "trainNumber" },
+                                            { label: "Train No.", field: "trainNumber" },
                                             { label: "Risk Level", field: "riskLevel" },
-                                            { label: "Incidents",  field: "totalIncidents" },
-                                            { label: "Top Crime",  field: null },
-                                            { label: "Duty Action",field: null },
-                                            { label: "RA Cases",   field: null },
-                                            { label: "Updated",    field: "updatedAt" },
-                                            { label: "",           field: null },
+                                            { label: "Incidents", field: "totalIncidents" },
+                                            { label: "Top Crime", field: null },
+                                            { label: "Duty Action", field: null },
+                                            { label: "RA Cases", field: null },
+                                            { label: "Updated", field: "updatedAt" },
+                                            { label: "", field: null },
                                         ] as { label: string; field: SortField | null }[]).map(({ label, field }) => (
                                             <th
                                                 key={label}
