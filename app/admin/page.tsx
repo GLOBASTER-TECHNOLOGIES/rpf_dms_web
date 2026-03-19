@@ -9,9 +9,9 @@ import {
   Users,
   ShieldAlert,
   CalendarClock,
-  CloudLightning,
-  ChevronRight,
   BookOpen,
+  LogOut,
+  Megaphone,
 } from "lucide-react";
 
 interface Module {
@@ -19,66 +19,66 @@ interface Module {
   description: string;
   href: string;
   icon: React.ReactNode;
-  accent: string;
-  iconBg: string;
+  borderAccent: string;
+  iconColors: string;
 }
 
 const modules: Module[] = [
   {
     title: "Instructions",
-    description: "Guidelines and documentation for operating the admin panel.",
+    description: "Manage official guidelines and standing orders.",
     href: "/admin/instruction",
-    icon: <BookOpen size={20} />,
-    accent: "hover:border-slate-900",
-    iconBg: "bg-slate-600 text-white",
+    icon: <BookOpen size={24} strokeWidth={2} />,
+    borderAccent: "border-l-indigo-500",
+    iconColors: "bg-indigo-50 text-indigo-700 group-hover:bg-indigo-600 group-hover:text-white",
   },
   {
     title: "Train Schedules",
-    description: "Manage arrival, departure, platforms and days of run.",
+    description: "Update and monitor regional train timelines.",
     href: "/admin/train-schedule",
-    icon: <Train size={20} />,
-    accent: "hover:border-slate-400",
-    iconBg: "bg-slate-100 text-slate-700",
+    icon: <Train size={24} strokeWidth={2} />,
+    borderAccent: "border-l-blue-500",
+    iconColors: "bg-blue-50 text-blue-700 group-hover:bg-blue-600 group-hover:text-white",
   },
   {
     title: "RPF Posts",
-    description: "View and manage RPF Thanas and outposts across divisions.",
+    description: "Manage outposts, stations, and jurisdictions.",
     href: "/admin/post",
-    icon: <Building2 size={20} />,
-    accent: "hover:border-blue-400",
-    iconBg: "bg-blue-50 text-blue-700",
+    icon: <Building2 size={24} strokeWidth={2} />,
+    borderAccent: "border-l-violet-500",
+    iconColors: "bg-violet-50 text-violet-700 group-hover:bg-violet-600 group-hover:text-white",
   },
   {
     title: "Officers",
-    description: "Manage RPF personnel, ranks, roles and assignments.",
+    description: "Personnel directory and duty assignments.",
     href: "/admin/officer",
-    icon: <Users size={20} />,
-    accent: "hover:border-emerald-400",
-    iconBg: "bg-emerald-50 text-emerald-700",
+    icon: <Users size={24} strokeWidth={2} />,
+    borderAccent: "border-l-emerald-500",
+    iconColors: "bg-emerald-50 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white",
   },
   {
     title: "Threat Calendar",
-    description: "Track alerts, security events and operational dates.",
+    description: "Monitor upcoming security events and alerts.",
     href: "/admin/threat-calendar",
-    icon: <CalendarClock size={20} />,
-    accent: "hover:border-amber-400",
-    iconBg: "bg-amber-50 text-amber-600",
+    icon: <CalendarClock size={24} strokeWidth={2} />,
+    borderAccent: "border-l-amber-500",
+    iconColors: "bg-amber-50 text-amber-700 group-hover:bg-amber-600 group-hover:text-white",
   },
-  // {
-  //   title: "Threat Forecast",
-  //   description: "Monitor upcoming risk assessments for RPF zones.",
-  //   href: "/admin/threatforecast",
-  //   icon: <CloudLightning size={20} />,
-  //   accent: "hover:border-red-400",
-  //   iconBg: "bg-red-50 text-red-600",
-  // },
   {
     title: "Incidents",
-    description: "Log and review security incidents reported across posts.",
+    description: "Log and review reported security breaches.",
     href: "/admin/incidents",
-    icon: <ShieldAlert size={20} />,
-    accent: "hover:border-purple-400",
-    iconBg: "bg-purple-50 text-purple-700",
+    icon: <ShieldAlert size={24} strokeWidth={2} />,
+    borderAccent: "border-l-red-500",
+    iconColors: "bg-red-50 text-red-700 group-hover:bg-red-600 group-hover:text-white",
+  },
+  {
+    title: "Briefings",
+    description: "Publish daily security briefings and notices.",
+    href: "/admin/briefing",
+    icon: <Megaphone size={24} strokeWidth={2} />,
+    borderAccent: "border-l-cyan-500",
+    iconColors: "bg-cyan-50 text-cyan-700 group-hover:bg-cyan-600 group-hover:text-white",
   },
 ];
 
@@ -86,72 +86,84 @@ export default function AdminPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans antialiased text-slate-900">
-      
-      {/* ── Classic Dark Header ── */}
-      <header className="bg-slate-900 shadow-md">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center p-1 shadow-inner">
-              <Image
-                src="/rpf_logo.png"
-                alt="RPF Logo"
-                width={40}
-                height={40}
-                className="object-contain"
-              />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">
-                Railway Protection Force
-              </p>
-              <h1 className="text-xl font-bold text-white tracking-tight">
-                Admin Dashboard
-              </h1>
-            </div>
-          </div>
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+      {/* ── Top Navigation Bar ── */}
+      {/* Changed to standard Tailwind bg-slate-900 to ensure it renders */}
+      <nav className="bg-slate-900 text-white shadow-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
 
-          <div className="hidden sm:flex items-center gap-3 border-l pl-6 border-slate-700">
-            <div className="text-right">
-              <p className="text-xs font-semibold text-white">Control Panel</p>
-              <p className="text-[11px] text-slate-400">All Systems Nominal</p>
+            {/* Logo and Brand */}
+            <div className="flex items-center gap-4">
+              <div className="bg-white p-1 rounded-sm">
+                <Image
+                  src="/rpf_logo.png"
+                  alt="RPF Logo"
+                  width={32}
+                  height={32}
+                  className="object-contain"
+                />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[11px] font-semibold text-slate-300 uppercase tracking-widest leading-none mb-0.5">
+                  Southern Railway
+                </span>
+                <span className="text-base font-bold tracking-wide leading-none text-white">
+                  Railway Protection Force
+                </span>
+              </div>
             </div>
-            <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
-              <ShieldAlert size={16} className="text-white" />
+
+            {/* Right side controls */}
+            <div className="flex items-center gap-4">
+              <div className="hidden sm:block text-right mr-4 border-r border-slate-700 pr-4">
+                <p className="text-sm font-medium text-white">System Administrator</p>
+                <p className="text-xs text-emerald-400">Session Active</p>
+              </div>
+              <button className="flex items-center gap-2 text-sm text-slate-300 hover:text-white transition-colors">
+                <LogOut size={18} />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
             </div>
           </div>
+        </div>
+      </nav>
+
+      {/* ── Page Header ── */}
+      <header className="bg-white border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <h1 className="text-2xl font-semibold text-slate-800">
+            Administrator Console
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Select a module below to manage system records and personnel.
+          </p>
         </div>
       </header>
 
-      {/* ── Page Body ── */}
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        
-        {/* Section Heading */}
-        <div className="mb-6">
-          <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest">Management Modules</h2>
-          <p className="text-xs text-slate-400 mt-0.5">Select a category to manage database records.</p>
-        </div>
-
-        {/* Module Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* ── Main Content ── */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {modules.map((mod) => (
             <button
               key={mod.href}
               onClick={() => router.push(mod.href)}
-              className={`group w-full text-left bg-white rounded-xl border border-slate-200 ${mod.accent} hover:shadow-sm transition-all duration-150 p-5 flex flex-col gap-4`}
+              className={`flex items-start gap-4 p-5 bg-white border-y border-r border-l-4 border-slate-200 rounded-md shadow-sm 
+                         hover:shadow-md transition-all duration-200 text-left group 
+                         focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2
+                         ${mod.borderAccent}`}
             >
-              <div className="flex items-center justify-between">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${mod.iconBg}`}>
-                  {mod.icon}
-                </div>
-                <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-500 group-hover:translate-x-1 transition-all" />
+              {/* Colored Icon Container */}
+              <div className={`flex-shrink-0 p-3 rounded-md transition-colors duration-200 ${mod.iconColors}`}>
+                {mod.icon}
               </div>
 
+              {/* Text Content */}
               <div>
-                <h3 className="text-md font-bold text-slate-800 leading-tight">
+                <h3 className="text-base font-bold text-slate-800 group-hover:text-slate-900 transition-colors">
                   {mod.title}
                 </h3>
-                <p className="text-xs text-slate-500 mt-1.5 leading-normal line-clamp-2">
+                <p className="text-sm text-slate-500 mt-1 leading-snug">
                   {mod.description}
                 </p>
               </div>
@@ -159,12 +171,6 @@ export default function AdminPage() {
           ))}
         </div>
       </main>
-
-      <footer className="max-w-6xl mx-auto px-6 py-8 border-t border-slate-200 mt-4 text-center">
-        <p className="text-[11px] text-slate-400 font-medium uppercase tracking-widest">
-          &copy; 2026 RPF Security Management System
-        </p>
-      </footer>
     </div>
   );
 }
