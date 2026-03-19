@@ -65,14 +65,6 @@ const modules: Module[] = [
     iconColors: "bg-amber-50 text-amber-700 group-hover:bg-amber-600 group-hover:text-white",
   },
   {
-    title: "Incidents",
-    description: "Log and review reported security breaches.",
-    href: "/admin/incidents",
-    icon: <ShieldAlert size={24} strokeWidth={2} />,
-    borderAccent: "border-l-red-500",
-    iconColors: "bg-red-50 text-red-700 group-hover:bg-red-600 group-hover:text-white",
-  },
-  {
     title: "Briefings",
     description: "Publish daily security briefings and notices.",
     href: "/admin/briefing",
