@@ -13,41 +13,46 @@ export async function PUT(req: Request) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         { success: false, message: "Invalid briefing id" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const body = await req.json();
 
-    const allowedUpdates = {
-      isDelivered: body.isDelivered,
-      deliveredAt: body.deliveredAt,
-      isPrinted: body.isPrinted,
-    };
+    // Allow updating all editable fields
+    const allowedUpdates: Record<string, any> = {};
 
-    const briefing = await Briefing.findByIdAndUpdate(
-      id,
-      allowedUpdates,
-      { new: true }
-    );
+    if (body.post !== undefined) allowedUpdates.post = body.post;
+    if (body.shift !== undefined) allowedUpdates.shift = body.shift;
+    if (body.dutyDate !== undefined) allowedUpdates.dutyDate = body.dutyDate;
+    if (body.briefingScript !== undefined)
+      allowedUpdates.briefingScript = body.briefingScript;
+
+    // Keep existing status fields if provided
+    if (body.isDelivered !== undefined)
+      allowedUpdates.isDelivered = body.isDelivered;
+    if (body.deliveredAt !== undefined)
+      allowedUpdates.deliveredAt = body.deliveredAt;
+    if (body.isPrinted !== undefined) allowedUpdates.isPrinted = body.isPrinted;
+
+    const briefing = await Briefing.findByIdAndUpdate(id, allowedUpdates, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!briefing) {
       return NextResponse.json(
         { success: false, message: "Briefing not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      data: briefing,
-    });
+    return NextResponse.json({ success: true, data: briefing });
   } catch (error) {
     console.error(error);
-
     return NextResponse.json(
       { success: false, message: "Failed to update briefing" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
