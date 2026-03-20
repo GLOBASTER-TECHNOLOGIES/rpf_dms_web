@@ -8,81 +8,79 @@ export async function POST(req: NextRequest) {
   try {
     await dbConnect();
 
-    // 1. EXTRACT TOKEN (Cookies for Web, Auth Header for Mobile)
     let token = req.cookies.get("accessToken")?.value;
+
     if (!token) {
       const authHeader = req.headers.get("authorization");
-      if (authHeader && authHeader.startsWith("Bearer ")) {
+      if (authHeader?.startsWith("Bearer ")) {
         token = authHeader.split(" ")[1];
       }
     }
 
     if (!token) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized. Please log in." },
+        { success: false, message: "Unauthorized" },
         { status: 401 },
       );
     }
 
-    // 2. VERIFY TOKEN
-    let decoded: any;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET as string);
-    } catch {
-      return NextResponse.json(
-        { success: false, message: "Invalid or expired token." },
-        { status: 401 },
-      );
-    }
+    const decoded: any = jwt.verify(
+      token,
+      process.env.JWT_ACCESS_SECRET as string,
+    );
 
-    // 3. GET OFFICER DETAILS
     const officer = await Officer.findById(decoded.id);
+
     if (!officer || !officer.active) {
       return NextResponse.json(
-        { success: false, message: "Officer not found or account inactive." },
+        { success: false, message: "Officer not valid" },
         { status: 401 },
       );
     }
 
-    // 4. PARSE BODY
     const body = await req.json();
+
     const { post, shift, dutyDate, briefingScript } = body;
 
-    // Validation
     if (!post || !shift || !dutyDate || !briefingScript) {
       return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Missing required fields: post, shift, dutyDate, or briefingScript",
-        },
+        { success: false, message: "All fields required" },
         { status: 400 },
       );
     }
 
-    // 5. SAVE TO DATABASE
+    const parsedDate = new Date(dutyDate);
+
+    if (isNaN(parsedDate.getTime())) {
+      return NextResponse.json(
+        { success: false, message: "Invalid dutyDate" },
+        { status: 400 },
+      );
+    }
+
     const briefing = await Briefing.create({
       createdByOfficerId: officer._id,
       post,
       shift,
-      dutyDate: new Date(dutyDate), // Ensure it's stored as a Date object
-      briefingScript, // This is the text from your CreateBriefing textarea
+      dutyDate: parsedDate,
+      briefingScript,
     });
 
     return NextResponse.json(
       {
         success: true,
-        message: "Briefing script saved successfully",
+        message: "Briefing created successfully",
         data: briefing,
       },
       { status: 201 },
     );
   } catch (error: any) {
-    console.error("Briefing Save Error:", error);
+    console.error(error);
+
     return NextResponse.json(
       {
         success: false,
-        message: error.message || "Internal Server Error",
+        message: error.message || "Server error",
       },
       { status: 500 },
     );
