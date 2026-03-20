@@ -5,137 +5,100 @@ import connectDB from "@/config/dbConnect";
 import { generateDebriefAnalysis } from "@/config/debriefAI";
 
 // ─────────────────────────────────────────
-// Determine Shift Based on IST Time
+// Determine Shift & Date Based on IST Time
 // ─────────────────────────────────────────
-function getCurrentShift(): "Morning" | "Afternoon" | "Night" {
+function getShiftContext() {
   const now = new Date();
+  // Get IST time string
+  const istString = now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+  const istDate = new Date(istString);
+  const istHour = istDate.getHours();
 
-  const istHour = new Date(
-    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
-  ).getHours();
+  let shift: "Morning" | "Afternoon" | "Night" = "Night";
 
-  if (istHour >= 6 && istHour < 14) return "Morning";
-  if (istHour >= 14 && istHour < 22) return "Afternoon";
-  return "Night";
+  if (istHour >= 6 && istHour < 14) shift = "Morning";
+  else if (istHour >= 14 && istHour < 22) shift = "Afternoon";
+
+  return { shift, istDate };
 }
 
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
-    // ─────────────────────────────────────────
-    // 1️⃣ Get Token
-    // ─────────────────────────────────────────
+    // 1️⃣ Auth Logic (Keep your existing token logic)
     const cookieToken = req.cookies.get("accessToken")?.value;
     const authHeader = req.headers.get("authorization");
-
-    let token = cookieToken;
-
-    if (!token && authHeader && authHeader.startsWith("Bearer ")) {
-      token = authHeader.split(" ")[1];
-    }
+    let token =
+      cookieToken ||
+      (authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null);
 
     if (!token) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized: No token provided" },
+        { success: false, message: "Unauthorized" },
         { status: 401 },
       );
     }
 
-    // ─────────────────────────────────────────
-    // 2️⃣ Verify JWT
-    // ─────────────────────────────────────────
     let decoded: { id: string };
-
     try {
       decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET as string) as {
         id: string;
       };
     } catch {
       return NextResponse.json(
-        { success: false, message: "Invalid or expired token" },
+        { success: false, message: "Invalid token" },
         { status: 401 },
       );
     }
 
-    // ─────────────────────────────────────────
-    // 3️⃣ Parse Body
-    // ─────────────────────────────────────────
-    const body = await req.json();
-    const { transcript } = body;
-
-    if (!transcript || transcript.trim().length === 0) {
+    // 2️⃣ Parse Body
+    const { transcript } = await req.json();
+    if (!transcript?.trim()) {
       return NextResponse.json(
-        { success: false, message: "Transcript cannot be empty" },
+        { success: false, message: "Transcript required" },
         { status: 400 },
       );
     }
 
-    // ─────────────────────────────────────────
-    // 4️⃣ Detect Shift Automatically
-    // ─────────────────────────────────────────
-    const shift = getCurrentShift();
+    // 3️⃣ Detect Shift AND Set the explicit Date
+    // This ensures the 'date' field in DB exactly matches what the report query looks for
+    const { shift, istDate } = getShiftContext();
 
-    // ─────────────────────────────────────────
-    // 5️⃣ Run AI Analysis
-    // ─────────────────────────────────────────
-    let summary = "";
-    let observations = "";
-    let improvements = "";
-
+    // 4️⃣ Run AI Analysis (Your existing logic)
+    let aiResult;
     try {
-      const aiResult = await generateDebriefAnalysis(transcript);
-
-      summary = aiResult.summary || "";
-
-      // Convert array → string safely
-      observations = Array.isArray(aiResult.observations)
-        ? aiResult.observations.join("\n")
-        : aiResult.observations || "";
-
-      improvements = Array.isArray(aiResult.improvements)
-        ? aiResult.improvements.join("\n")
-        : aiResult.improvements || "";
+      aiResult = await generateDebriefAnalysis(transcript);
     } catch (err) {
-      console.error("AI generation failed:", err);
-
-      // fallback if AI fails
-      summary = "Duty report submitted.";
-      observations = "No major operational observations recorded.";
-      improvements = "Continue standard security monitoring.";
+      console.error("AI failed, using fallback");
+      aiResult = {
+        summary: "Duty report submitted.",
+        observations: "No major observations.",
+        improvements: "Standard monitoring.",
+      };
     }
 
-    // ─────────────────────────────────────────
-    // 6️⃣ Save Debrief
-    // ─────────────────────────────────────────
+    // 5️⃣ Save Debrief
+    // CRITICAL: We add 'date: istDate' so the time-range query finds it!
     const debrief = await Debrief.create({
       staffId: decoded.id,
       shift,
+      date: istDate, // Use the calculated IST date object
       transcript,
-      summary,
-      observations,
-      improvements,
+      summary: aiResult.summary,
+      observations: Array.isArray(aiResult.observations)
+        ? aiResult.observations.join("\n")
+        : aiResult.observations,
+      improvements: Array.isArray(aiResult.improvements)
+        ? aiResult.improvements.join("\n")
+        : aiResult.improvements,
     });
 
-    // ─────────────────────────────────────────
-    // 7️⃣ Return Response
-    // ─────────────────────────────────────────
-    return NextResponse.json(
-      {
-        success: true,
-        message: "Debrief created successfully",
-        data: debrief,
-      },
-      { status: 201 },
-    );
+    return NextResponse.json({ success: true, data: debrief }, { status: 201 });
   } catch (error) {
     console.error("CREATE DEBRIEF ERROR:", error);
-
     return NextResponse.json(
-      {
-        success: false,
-        message: "Server error while creating debrief",
-      },
+      { success: false, message: "Server error" },
       { status: 500 },
     );
   }
