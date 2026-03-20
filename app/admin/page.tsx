@@ -12,6 +12,7 @@ import {
   BookOpen,
   LogOut,
   Megaphone,
+  Proportions
 } from "lucide-react";
 
 interface Module {
@@ -24,6 +25,14 @@ interface Module {
 }
 
 const modules: Module[] = [
+  {
+    title: "Briefings",
+    description: "Publish daily security briefings and notices.",
+    href: "/admin/briefing",
+    icon: <Megaphone size={24} strokeWidth={2} />,
+    borderAccent: "border-l-cyan-500",
+    iconColors: "bg-cyan-50 text-cyan-700 group-hover:bg-cyan-600 group-hover:text-white",
+  },
   {
     title: "Instructions",
     description: "Manage official guidelines and standing orders.",
@@ -39,6 +48,22 @@ const modules: Module[] = [
     icon: <Train size={24} strokeWidth={2} />,
     borderAccent: "border-l-blue-500",
     iconColors: "bg-blue-50 text-blue-700 group-hover:bg-blue-600 group-hover:text-white",
+  },
+  {
+    title: "Train Crime Intelligence",
+    description: "Update and monitor regional train timelines.",
+    href: "/admin/train-crime-intelligence",
+    icon: <Train size={24} strokeWidth={2} />,
+    borderAccent: "border-l-blue-500",
+    iconColors: "bg-blue-50 text-blue-700 group-hover:bg-blue-600 group-hover:text-white",
+  },
+  {
+    title: "Shift Report",
+    description: "Download and view post wise shift report.",
+    href: "/admin/shift-report",
+    icon: <Proportions size={24} strokeWidth={2} />,
+    borderAccent: "border-l-violet-500",
+    iconColors: "bg-violet-50 text-violet-700 group-hover:bg-violet-600 group-hover:text-white",
   },
   {
     title: "RPF Posts",
@@ -64,14 +89,7 @@ const modules: Module[] = [
     borderAccent: "border-l-amber-500",
     iconColors: "bg-amber-50 text-amber-700 group-hover:bg-amber-600 group-hover:text-white",
   },
-  {
-    title: "Briefings",
-    description: "Publish daily security briefings and notices.",
-    href: "/admin/briefing",
-    icon: <Megaphone size={24} strokeWidth={2} />,
-    borderAccent: "border-l-cyan-500",
-    iconColors: "bg-cyan-50 text-cyan-700 group-hover:bg-cyan-600 group-hover:text-white",
-  },
+
 ];
 
 export default function AdminPage() {
