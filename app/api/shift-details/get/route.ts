@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     // Normalize
     const shiftKey = shiftName.toLowerCase();
 
-    // 🕒 Time Range (still used for instructions, threats, debriefs)
+    // 🕒 Time Range
     const shiftStart = new Date(shiftDate);
     const shiftEnd = new Date(shiftDate);
 
@@ -63,6 +63,9 @@ export async function GET(req: NextRequest) {
       .populate("instructions")
       .populate("officers");
 
+    // Optional: allow empty shift
+    // if (!shift) { ... } ← your choice
+
     // ✅ 3. Instructions
     const validInstructions = await InstructionModel.find({
       validFrom: { $lte: shiftEnd },
@@ -87,38 +90,52 @@ export async function GET(req: NextRequest) {
       endDate: { $gte: shiftStart },
     });
 
-    // ✅ 6. Trains (NO arrivalTime, NO platform)
-    const trains = await TrainSchedule.find({}, "trainNumber trainName");
+    // ✅ 6. Trains
+    const trains = await TrainSchedule.find(
+      {},
+      "trainNumber arrivalTime trainName platform",
+    );
 
-    const trainNumbers = trains.map((t) => t.trainNumber);
+    const trainsInShift = trains.filter((train) => {
+      if (!train.arrivalTime) return false;
+      if (!train.arrivalTime.includes(":")) return false;
+
+      const [h, m] = train.arrivalTime.split(":").map(Number);
+      if (isNaN(h) || isNaN(m)) return false;
+
+      const arrival = new Date(shiftDate);
+      arrival.setHours(h, m, 0, 0);
+
+      return arrival >= shiftStart && arrival <= shiftEnd;
+    });
+
+    const trainNumbers = trainsInShift.map((t) => t.trainNumber);
 
     // ✅ 7. Crime Intel
     const crimeIntel = await TrainCrimeIntelligence.find({
       trainNumber: { $in: trainNumbers },
     });
+    const data = {
+      // Flattening the main shift details so they aren't double-nested
+      _id: shift?._id,
+      shiftName: shift?.shiftName || shiftName,
+      shiftDate: date,
+      post: shift?.post || post,
 
+      // Detailed Arrays
+      briefingDocument: shift?.briefingDocument || null,
+      officers: shift?.officers || [],
+      instructions: validInstructions || [],
+      debriefs: debriefs || [],
+      threats: threats || [],
+      trains: trainsInShift || [],
+      crimeIntel: crimeIntel || [],
+    };
+    console.log(data.debriefs);
     // 🎯 Final Response
     return NextResponse.json({
       success: true,
-      data: {
-        query: { date, shiftName, post },
-
-        shift: shift || null,
-
-        briefing: shift?.briefingDocument || null,
-
-        officers: shift?.officers || [],
-
-        instructions: validInstructions,
-
-        debriefs,
-
-        threats,
-
-        trains,
-
-        crimeIntel,
-      },
+      data: data,
     });
   } catch (error) {
     console.error("SHIFT REPORT ERROR:", error);
