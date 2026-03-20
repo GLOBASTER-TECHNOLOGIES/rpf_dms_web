@@ -10,6 +10,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     const postCode = searchParams.get("postCode");
+    const forceNumber = searchParams.get("forceNumber"); // ✅ Added this
 
     // 1. Fetch single officer by ID
     if (id) {
@@ -23,7 +24,28 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: true, data: officer });
     }
 
-    // 2. Build Query for listing
+    // 2. Fetch single officer by Force Number ✅
+    // inside your GET function in api/officer/get/route.ts
+    if (forceNumber) {
+      const officer = await Officer.findOne({
+        forceNumber: forceNumber.trim().toUpperCase(),
+      });
+
+      if (!officer) {
+        return NextResponse.json(
+          { success: false, message: "Officer not found" },
+          { status: 404 },
+        );
+      }
+
+      // ✅ Wrap in 'data' so the frontend knows exactly where to look
+      return NextResponse.json({
+        success: true,
+        data: officer,
+      });
+    }
+
+    // 3. Build Query for listing
     const query: any = {};
     if (postCode) {
       query.postCode = postCode.toUpperCase();
