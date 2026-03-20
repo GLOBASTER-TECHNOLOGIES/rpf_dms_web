@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     // Normalize
     const shiftKey = shiftName.toLowerCase();
 
-    // 🕒 Time Range
+    // 🕒 Time Range (still used for instructions, threats, debriefs)
     const shiftStart = new Date(shiftDate);
     const shiftEnd = new Date(shiftDate);
 
@@ -63,9 +63,6 @@ export async function GET(req: NextRequest) {
       .populate("instructions")
       .populate("officers");
 
-    // Optional: allow empty shift
-    // if (!shift) { ... } ← your choice
-
     // ✅ 3. Instructions
     const validInstructions = await InstructionModel.find({
       validFrom: { $lte: shiftEnd },
@@ -90,26 +87,10 @@ export async function GET(req: NextRequest) {
       endDate: { $gte: shiftStart },
     });
 
-    // ✅ 6. Trains
-    const trains = await TrainSchedule.find(
-      {},
-      "trainNumber arrivalTime trainName platform",
-    );
+    // ✅ 6. Trains (NO arrivalTime, NO platform)
+    const trains = await TrainSchedule.find({}, "trainNumber trainName");
 
-    const trainsInShift = trains.filter((train) => {
-      if (!train.arrivalTime) return false;
-      if (!train.arrivalTime.includes(":")) return false;
-
-      const [h, m] = train.arrivalTime.split(":").map(Number);
-      if (isNaN(h) || isNaN(m)) return false;
-
-      const arrival = new Date(shiftDate);
-      arrival.setHours(h, m, 0, 0);
-
-      return arrival >= shiftStart && arrival <= shiftEnd;
-    });
-
-    const trainNumbers = trainsInShift.map((t) => t.trainNumber);
+    const trainNumbers = trains.map((t) => t.trainNumber);
 
     // ✅ 7. Crime Intel
     const crimeIntel = await TrainCrimeIntelligence.find({
@@ -134,7 +115,7 @@ export async function GET(req: NextRequest) {
 
         threats,
 
-        trains: trainsInShift,
+        trains,
 
         crimeIntel,
       },
