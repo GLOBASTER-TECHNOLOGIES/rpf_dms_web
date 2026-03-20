@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
     AlertTriangle, Plus, RefreshCw, Train, Search,
     ChevronDown, ChevronUp, Edit2, Trash2, ShieldAlert,
-    TrendingUp, Activity, X, Save, ArrowLeft
+    TrendingUp, Activity, X, Save, ArrowLeft, BookCopy
 } from "lucide-react";
 import { ITrainCrimeIntelligence } from "@/models/TrainCrimeIntelligence";
 import CreateTrainIntelForm from "@/components/trainCrimeIntel/Createtrainintelform";
