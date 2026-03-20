@@ -19,17 +19,19 @@ export const generateShiftPDF = (data: any) => {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
   doc.text("RAILWAY PROTECTION FORCE", 45, 18);
-  
+
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.text("Ministry of Railways, Government of India", 45, 23);
-  
+
   doc.setFont("helvetica", "bold");
   doc.text(`SHIFT DETAIL REPORT: ${data.post || "N/A"}`, 45, 30);
 
   doc.setFontSize(8);
   doc.setFont("helvetica", "italic");
-  doc.text(`Generated on: ${timestamp}`, pageWidth - 15, 15, { align: "right" });
+  doc.text(`Generated on: ${timestamp}`, pageWidth - 15, 15, {
+    align: "right",
+  });
   doc.text("CONFIDENTIAL", pageWidth - 15, 20, { align: "right" });
 
   doc.setLineWidth(0.5);
@@ -39,9 +41,11 @@ export const generateShiftPDF = (data: any) => {
   autoTable(doc, {
     startY: 42,
     head: [["DATE", "SHIFT NAME", "LOCATION", "STAFF COUNT"]],
-    body: [[data.shiftDate, data.shiftName, data.post, data.officers?.length || 0]],
+    body: [
+      [data.shiftDate, data.shiftName, data.post, data.officers?.length || 0],
+    ],
     theme: "grid",
-    headStyles: { fillGray: 200, textColor: 0, fontStyle: "bold" },
+    headStyles: { fillColor: [200, 200, 200], textColor: 0, fontStyle: "bold" },
   });
 
   // --- 3. Briefing Section ---
@@ -49,10 +53,13 @@ export const generateShiftPDF = (data: any) => {
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
   doc.text("1. COMMANDERS BRIEFING", 15, finalY + 10);
-  
+
   doc.setFontSize(10);
   doc.setFont("helvetica", "italic");
-  const splitBriefing = doc.splitTextToSize(data.briefingDocument?.briefingScript || "No briefing provided.", pageWidth - 30);
+  const splitBriefing = doc.splitTextToSize(
+    data.briefingDocument?.briefingScript || "No briefing provided.",
+    pageWidth - 30,
+  );
   doc.text(splitBriefing, 15, finalY + 17);
 
   // --- 4. Officers Table ---
@@ -60,7 +67,11 @@ export const generateShiftPDF = (data: any) => {
   autoTable(doc, {
     startY: finalY + 20 + briefingHeight,
     head: [["#", "DEPLOYED PERSONNEL NAME", "FORCE NUMBER"]],
-    body: data.officers?.map((o: any, i: number) => [i + 1, o.name, o.forceNumber || "N/A"]),
+    body: data.officers?.map((o: any, i: number) => [
+      i + 1,
+      o.name,
+      o.forceNumber || "N/A",
+    ]),
     theme: "striped",
     headStyles: { fillColor: [41, 128, 185] },
   });
