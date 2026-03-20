@@ -81,7 +81,7 @@ export const generateShiftPDF = (data: any) => {
     startY: (doc as any).lastAutoTable.finalY + 10,
     head: [["DUTY INSTRUCTIONS", "DETAILS"]],
     body: data.instructions?.map((i: any) => [i.title, i.instruction]),
-    columnStyles: { 0: { fontStyle: "bold", width: 50 } },
+    columnStyles: { 0: { fontStyle: "bold", cellWidth: 50 } },
     theme: "grid",
   });
 
