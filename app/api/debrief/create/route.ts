@@ -4,41 +4,35 @@ import Debrief from "@/models/Debrief.model";
 import connectDB from "@/config/dbConnect";
 import { generateDebriefAnalysis } from "@/config/debriefAI";
 
-// ─────────────────────────────────────────
-// Determine Shift & Date Based on IST Time
-// ─────────────────────────────────────────
 function getShiftContext() {
   const now = new Date();
-  // Get IST time string
-  const istString = now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
-  const istDate = new Date(istString);
-  const istHour = istDate.getHours();
+  const istTime = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
+  );
+  const istHour = istTime.getHours();
 
   let shift: "Morning" | "Afternoon" | "Night" = "Night";
-
   if (istHour >= 6 && istHour < 14) shift = "Morning";
   else if (istHour >= 14 && istHour < 22) shift = "Afternoon";
 
-  return { shift, istDate };
+  return { shift };
 }
 
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
-    // 1️⃣ Auth Logic (Keep your existing token logic)
     const cookieToken = req.cookies.get("accessToken")?.value;
     const authHeader = req.headers.get("authorization");
-    let token =
+    const token =
       cookieToken ||
       (authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null);
 
-    if (!token) {
+    if (!token)
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 401 },
       );
-    }
 
     let decoded: { id: string };
     try {
@@ -52,25 +46,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2️⃣ Parse Body
     const { transcript } = await req.json();
-    if (!transcript?.trim()) {
+    if (!transcript?.trim())
       return NextResponse.json(
         { success: false, message: "Transcript required" },
         { status: 400 },
       );
-    }
 
-    // 3️⃣ Detect Shift AND Set the explicit Date
-    // This ensures the 'date' field in DB exactly matches what the report query looks for
-    const { shift, istDate } = getShiftContext();
+    const { shift } = getShiftContext();
 
-    // 4️⃣ Run AI Analysis (Your existing logic)
     let aiResult;
     try {
       aiResult = await generateDebriefAnalysis(transcript);
-    } catch (err) {
-      console.error("AI failed, using fallback");
+    } catch {
       aiResult = {
         summary: "Duty report submitted.",
         observations: "No major observations.",
@@ -78,12 +66,10 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    // 5️⃣ Save Debrief
-    // CRITICAL: We add 'date: istDate' so the time-range query finds it!
     const debrief = await Debrief.create({
       staffId: decoded.id,
       shift,
-      date: istDate, // Use the calculated IST date object
+      date: new Date(), // actual UTC timestamp — falls correctly in shift window
       transcript,
       summary: aiResult.summary,
       observations: Array.isArray(aiResult.observations)
