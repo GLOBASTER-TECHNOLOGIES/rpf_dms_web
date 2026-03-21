@@ -17,38 +17,59 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_ACCESS_SECRET as string,
-    ) as { id: string };
+    jwt.verify(token, process.env.JWT_ACCESS_SECRET as string);
 
-    // GET postcode from query
-    const postCode = req.nextUrl.searchParams.get("postCode");
+    const searchParams = req.nextUrl.searchParams;
 
-    // Build filter dynamically
-    const filter: any = {};
+    // ── Filters ───────────────────────────────────────────────────────────
+    const postCode = searchParams.get("postCode");
+    const shift = searchParams.get("shift"); // Morning | Afternoon | Night
+    const staffId = searchParams.get("staffId");
+    const dateParam = searchParams.get("date"); // YYYY-MM-DD in IST
+    const approved = searchParams.get("approved"); // "true" | "false"
 
-    if (postCode) {
-      filter.postCode = postCode;
+    const filter: Record<string, unknown> = {};
+
+    if (postCode) filter.postCode = postCode;
+    if (shift) filter.shift = shift;
+    if (staffId) filter.staffId = staffId;
+    if (approved !== null && approved !== undefined) {
+      filter.approved = approved === "true";
     }
 
+    // ── Date range (full IST day → UTC) ───────────────────────────────────
+    if (dateParam) {
+      const [year, month, day] = dateParam.split("-").map(Number);
+      const istOffsetMs = 5.5 * 60 * 60 * 1000;
+
+      const startIST = new Date(year, month - 1, day, 0, 0, 0, 0);
+      const endIST = new Date(year, month - 1, day, 23, 59, 59, 999);
+
+      filter.date = {
+        $gte: new Date(startIST.getTime() - istOffsetMs),
+        $lte: new Date(endIST.getTime() - istOffsetMs),
+      };
+    }
+
+    // ── Query ─────────────────────────────────────────────────────────────
     const debriefs = await Debrief.find(filter)
-      .populate({
-        path: "staffId",
-        select: "name forceNumber rank",
-      })
+      .populate({ path: "staffId", select: "name forceNumber rank" })
       .sort({ createdAt: -1 })
       .lean();
 
-    console.log(debriefs);
+    // ── Shape response — include report count for each debrief ────────────
+    const data = debriefs.map((d) => ({
+      ...d,
+      reportCount: Array.isArray(d.reports) ? d.reports.length : 0,
+    }));
 
     return NextResponse.json({
       success: true,
-      data: debriefs,
+      count: data.length,
+      data,
     });
   } catch (error) {
     console.error("GET DEBRIEF ERROR:", error);
-
     return NextResponse.json(
       { success: false, message: "Server error" },
       { status: 500 },
