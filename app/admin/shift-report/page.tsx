@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+// Import the PDF function from your separate file
 import { generateShiftPDF } from "@/config/pdfGenerator";
 
 export default function ShiftReportPage() {
@@ -9,148 +10,327 @@ export default function ShiftReportPage() {
     const [post, setPost] = useState("");
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(false);
+    const [hasSearched, setHasSearched] = useState(false);
 
     const fetchReport = async () => {
-        if (!date || !shift || !post) return;
+        if (!date || !shift || !post) {
+            alert("Please fill in all filters.");
+            return;
+        }
         setLoading(true);
-        setData(null);
+        setHasSearched(true);
         try {
-            const res = await fetch(`/api/shift-details/get?date=${date}&shift=${shift}&post=${post}`);
+            const res = await fetch(
+                `/api/shift-details/get?date=${date}&shift=${shift}&post=${post}`,
+            );
             const json = await res.json();
             if (json.success && json.data) {
                 setData(json.data);
             } else {
-                alert("No shift records found.");
+                setData(null);
+                alert("No records found for the selected criteria.");
             }
         } catch (err) {
             console.error("Fetch Error:", err);
+            alert("Failed to fetch report. Check console.");
         }
         setLoading(false);
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-            <div className="max-w-7xl mx-auto space-y-6">
-                
-                {/* 🔍 Search Filters */}
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                    <FilterInput label="Shift Date" type="date" value={date} onChange={(e: any) => setDate(e.target.value)} />
-                    <div className="flex flex-col space-y-1">
-                        <label className="text-xs font-semibold text-gray-500 uppercase">Shift Timing</label>
-                        <select className="bg-gray-50 border-none ring-1 ring-gray-200 p-2.5 rounded-xl outline-none" value={shift} onChange={(e) => setShift(e.target.value)}>
-                            <option>Morning</option>
-                            <option>Afternoon</option>
-                            <option>Night</option>
-                        </select>
-                    </div>
-                    <FilterInput label="Post Code" placeholder="e.g. TPJ" value={post} onChange={(e: any) => setPost(e.target.value)} />
-                    <button onClick={fetchReport} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl transition-all disabled:opacity-50">
-                        {loading ? "Fetching..." : "Search Report"}
-                    </button>
-                </div>
+        <div className="min-h-screen bg-slate-50 p-4 md:p-8 lg:p-12 font-sans text-slate-900 flex justify-center">
+            <div className="w-full max-w-[800px] space-y-8">
 
-                {data && (
-                    <div className="animate-in fade-in duration-500 space-y-6">
-                        <div className="flex justify-between items-center">
-                            <h2 className="text-xl font-bold text-gray-800 uppercase italic">
-                                {data.post} Shift Report | {data.shiftDate}
-                            </h2>
-                            <button onClick={() => generateShiftPDF(data)} className="bg-red-600 text-white px-6 py-2 rounded-full hover:bg-red-700 transition-all flex items-center gap-2">
-                                📥 Download PDF
+                {/* --- HEADER & FILTERS --- */}
+                <header className="flex flex-col gap-6 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200">
+                    <div className="flex flex-col gap-1 text-center md:text-left">
+                        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
+                            Shift Operations Center
+                        </h1>
+                        <p className="text-sm text-slate-500 font-medium">
+                            Intelligence & Duty Reporting System
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col gap-5 w-full">
+                        <FilterInput
+                            label="Date"
+                            type="date"
+                            value={date}
+                            onChange={(e: any) => setDate(e.target.value)}
+                        />
+                        <div className="flex flex-col w-full gap-1.5">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Shift
+                            </label>
+                            <select
+                                className="bg-slate-50 border border-slate-300 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-semibold text-slate-700 transition-all w-full"
+                                value={shift}
+                                onChange={(e) => setShift(e.target.value)}
+                            >
+                                <option>Morning</option>
+                                <option>Afternoon</option>
+                                <option>Night</option>
+                            </select>
+                        </div>
+                        <FilterInput
+                            label="Post Code"
+                            placeholder="e.g. TPJ"
+                            value={post}
+                            onChange={(e: any) => setPost(e.target.value)}
+                        />
+                        <button
+                            onClick={fetchReport}
+                            disabled={loading}
+                            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-base font-bold px-6 py-3.5 mt-2 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
+                        >
+                            {loading ? (
+                                <span className="animate-pulse">Fetching Records...</span>
+                            ) : (
+                                "Generate Report"
+                            )}
+                        </button>
+                    </div>
+                </header>
+
+                {/* --- EMPTY / LOADING STATES --- */}
+                {!hasSearched ? (
+                    <div className="flex flex-col items-center justify-center py-32 text-slate-400 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50">
+                        <span className="text-4xl mb-3 opacity-50">📋</span>
+                        <p className="font-medium text-sm uppercase tracking-widest text-center px-4">
+                            Configure parameters to view shift data
+                        </p>
+                    </div>
+                ) : loading ? (
+                    <div className="flex flex-col gap-6 animate-pulse">
+                        <div className="h-40 bg-slate-200 rounded-3xl w-full" />
+                        <div className="h-64 bg-slate-200 rounded-3xl w-full" />
+                        <div className="h-64 bg-slate-200 rounded-3xl w-full" />
+                    </div>
+                ) : data ? (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col gap-6">
+
+                        {/* --- TOP BANNER --- */}
+                        <div className="bg-slate-900 text-white p-6 rounded-3xl flex flex-col gap-5 shadow-lg">
+                            <div className="flex flex-col gap-3">
+                                <span className="text-slate-400 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                                    <span className="bg-indigo-500 w-2 h-2 rounded-full animate-pulse"></span>
+                                    Active Shift Profile
+                                </span>
+                                <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
+                                    {data.post} • {data.shiftDate}
+                                </h2>
+                                <span className="bg-indigo-600 px-3 py-1 rounded-md text-sm font-semibold tracking-wide w-fit">
+                                    {data.shiftName} Shift
+                                </span>
+                            </div>
+
+                            {/* --- FIXED EXPORT BUTTON --- */}
+                            <button
+                                onClick={() => generateShiftPDF(data)}
+                                className="w-full bg-white/10 hover:bg-white/20 text-white text-sm font-bold px-5 py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 border border-white/10 mt-2"
+                            >
+                                📥 Export PDF Report
                             </button>
                         </div>
 
-                        {/* ROW 1: BRIEFING & INSTRUCTIONS */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <Section title="Commanders Briefing" icon="📢">
-                                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-xl">
-                                    <p className="text-blue-900 leading-relaxed italic text-sm">
-                                        "{data.briefingDocument?.briefingScript || "No script available."}"
-                                    </p>
-                                </div>
-                            </Section>
+                        {/* --- CONTENT SECTIONS --- */}
 
-                            <Section title="Duty Instructions" icon="📜">
-                                <div className="grid gap-2">
-                                    {data.instructions?.map((i: any) => (
-                                        <div key={i._id} className="p-3 rounded-xl border border-gray-100 bg-gray-50">
-                                            <h4 className="font-bold text-gray-800 text-xs uppercase text-blue-600">{i.title}</h4>
-                                            <p className="text-gray-600 text-xs mt-1">{i.instruction}</p>
+                        <Section title="Briefing Script" icon="📢">
+                            <div className="bg-[#F8FAFC] border border-slate-200 p-6 rounded-2xl">
+                                <p className="text-slate-700 leading-relaxed font-medium text-sm md:text-base">
+                                    {data.briefingDocument?.briefingScript ||
+                                        "No briefing script recorded for this shift."}
+                                </p>
+                            </div>
+                        </Section>
+
+                        <Section title="Deployed Personnel" icon="👮">
+                            <div className="flex flex-col gap-3">
+                                {data.officers?.length > 0 ? (
+                                    data.officers.map((o: any) => (
+                                        <div
+                                            key={o._id}
+                                            className="bg-white border border-slate-200 p-4 rounded-2xl flex items-center gap-4 shadow-sm"
+                                        >
+                                            <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-black text-lg border border-slate-200">
+                                                {o.name?.charAt(0) ?? "?"}
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <p className="text-base font-bold text-slate-900">
+                                                    {o.name}
+                                                </p>
+                                                <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mt-0.5">
+                                                    {o.rank} • {o.forceNumber}
+                                                </p>
+                                            </div>
                                         </div>
-                                    ))}
-                                </div>
-                            </Section>
-                        </div>
+                                    ))
+                                ) : (
+                                    <EmptyState message="No personnel assigned." />
+                                )}
+                            </div>
+                        </Section>
 
-                        {/* ROW 2: CRIME INTELLIGENCE & TRAINS */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            {/* Crime Intelligence */}
-                            <div className="lg:col-span-2">
-                                <Section title="Crime Intelligence (Risk Analysis)" icon="🚨">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {data.crimeIntel?.map((c: any) => (
-                                            <div key={c._id} className={`p-4 rounded-2xl border ${c.riskLevel === 'HIGH' ? 'bg-red-50 border-red-100' : 'bg-orange-50 border-orange-100'}`}>
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <span className="font-black text-gray-800">Train {c.trainNumber}</span>
-                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${c.riskLevel === 'HIGH' ? 'bg-red-600 text-white' : 'bg-orange-500 text-white'}`}>
-                                                        {c.riskLevel} RISK
-                                                    </span>
+                        <Section title="Duty Instructions" icon="📜">
+                            <div className="flex flex-col gap-4">
+                                {data.instructions?.length > 0 ? (
+                                    data.instructions.map((i: any) => (
+                                        <div
+                                            key={i._id}
+                                            className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col gap-2"
+                                        >
+                                            <h4 className="font-bold text-slate-900 text-base">
+                                                {i.title}
+                                            </h4>
+                                            <p className="text-slate-600 text-sm leading-relaxed">
+                                                {i.instruction}
+                                            </p>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <EmptyState message="No specific instructions provided." />
+                                )}
+                            </div>
+                        </Section>
+
+                        <Section title="Risk Analysis & Intel" icon="🚨">
+                            <div className="flex flex-col gap-4">
+                                {data.crimeIntel?.length > 0 ? (
+                                    data.crimeIntel.map((c: any) => (
+                                        <div
+                                            key={c._id}
+                                            className={`p-5 rounded-2xl border flex flex-col gap-4 shadow-sm ${c.riskLevel === "HIGH"
+                                                ? "bg-red-50 border-red-200"
+                                                : "bg-amber-50 border-amber-200"
+                                                }`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-bold text-slate-900 text-lg">
+                                                    Train #{c.trainNumber}
+                                                </span>
+                                                <span
+                                                    className={`text-[11px] px-3 py-1 rounded-md font-bold uppercase tracking-wider ${c.riskLevel === "HIGH"
+                                                        ? "bg-red-100 text-red-700"
+                                                        : "bg-amber-100 text-amber-700"
+                                                        }`}
+                                                >
+                                                    {c.riskLevel} Risk
+                                                </span>
+                                            </div>
+                                            <div className="bg-white/60 p-4 rounded-xl border border-white/50">
+                                                <span className="font-bold text-slate-600 text-xs uppercase tracking-wider block mb-1">
+                                                    Action Required
+                                                </span>
+                                                <p className="text-sm md:text-base text-slate-800 font-medium leading-relaxed">
+                                                    {c.primaryDutyAction}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <EmptyState message="No active intelligence alerts." />
+                                )}
+                            </div>
+                        </Section>
+
+                        <Section title="Post-Shift Debriefs" icon="📝">
+                            {data.debriefs?.length > 0 ? (
+                                <div className="flex flex-col gap-6">
+                                    {data.debriefs.map((d: any) => (
+                                        <div
+                                            key={d._id}
+                                            className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm"
+                                        >
+                                            {/* Debrief Header */}
+                                            <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center font-black text-xl shadow-sm">
+                                                        {d.staffId?.name?.charAt(0) ?? "?"}
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <p className="font-bold text-slate-900 text-lg">
+                                                            {d.staffId?.name ?? "Unknown Officer"}
+                                                        </p>
+                                                        <p className="text-xs text-slate-500 font-semibold uppercase tracking-widest mt-1">
+                                                            {d.staffId?.rank} • {d.staffId?.forceNumber}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <p className="text-[11px] font-bold text-gray-500 uppercase">Primary Action:</p>
-                                                <p className="text-[11px] text-gray-700">{c.primaryDutyAction}</p>
+                                                <span className="text-xs font-bold bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-full shadow-sm">
+                                                    {d.reports?.length ?? 0} Report(s)
+                                                </span>
                                             </div>
-                                        ))}
-                                    </div>
-                                </Section>
-                            </div>
 
-                            {/* Train Schedule */}
-                            <Section title="Shift Train Schedule" icon="🚆">
-                                <div className="max-h-60 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
-                                    {data.trains?.map((t: any) => (
-                                        <div key={t._id} className="flex justify-between p-2 bg-white border border-gray-100 rounded-lg shadow-sm">
-                                            <div className="text-[11px]">
-                                                <p className="font-bold text-gray-800">{t.trainNumber}</p>
-                                                <p className="text-gray-400">{t.trainName}</p>
+                                            {/* Reports List */}
+                                            <div className="p-6 flex flex-col gap-10">
+                                                {d.reports?.length > 0 ? (
+                                                    d.reports.map((r: any, idx: number) => (
+                                                        <div key={r._id ?? idx} className="flex flex-col gap-5">
+
+                                                            <div className="flex flex-wrap items-center gap-3">
+                                                                <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">
+                                                                    REPORT {idx + 1}
+                                                                </span>
+
+                                                                {(r.trainNo || r.trainNumber) && (
+                                                                    <span className="bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1 rounded-md text-xs font-bold tracking-wide">
+                                                                        🚆 Train {r.trainNo || r.trainNumber}
+                                                                    </span>
+                                                                )}
+
+                                                                <span className="text-sm text-slate-400 font-semibold ml-auto">
+                                                                    {r.submittedAt ? new Date(r.submittedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : ""}
+                                                                </span>
+                                                            </div>
+
+                                                            <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
+                                                                <p className="text-slate-800 text-sm md:text-base leading-relaxed font-medium">
+                                                                    {r.summary || r.transcript || "No content provided."}
+                                                                </p>
+                                                            </div>
+
+                                                            <div className="flex flex-col gap-6 mt-2">
+                                                                {r.observations && (
+                                                                    <div className="flex flex-col gap-2">
+                                                                        <p className="text-sm font-bold text-slate-500">Observations</p>
+                                                                        <p className="text-sm md:text-base text-slate-700 leading-relaxed">
+                                                                            {r.observations}
+                                                                        </p>
+                                                                    </div>
+                                                                )}
+
+                                                                {r.improvements && (
+                                                                    <div className="flex flex-col gap-2">
+                                                                        <p className="text-sm font-bold text-slate-500">Improvements</p>
+                                                                        <p className="text-sm md:text-base text-slate-700 leading-relaxed">
+                                                                            {r.improvements}
+                                                                        </p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            {idx !== d.reports.length - 1 && <hr className="border-slate-100 my-4" />}
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <p className="text-slate-400 text-sm font-medium">No specific reports logged.</p>
+                                                )}
                                             </div>
-                                            <span className="text-blue-600 font-bold text-xs">{t.arrivalTime}</span>
                                         </div>
                                     ))}
                                 </div>
-                            </Section>
-                        </div>
+                            ) : (
+                                <EmptyState message="No post-shift debriefs submitted yet." />
+                            )}
+                        </Section>
 
-                        {/* ROW 3: DEBRIEFS & PERSONNEL */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="lg:col-span-2">
-                                <Section title="Post-Shift Debriefs" icon="📝">
-                                    {data.debriefs?.map((d: any) => (
-                                        <div key={d._id} className="p-4 bg-green-50 rounded-2xl border border-green-100 mb-2">
-                                            <p className="text-xs font-bold text-green-700 uppercase">Summary</p>
-                                            <p className="text-sm text-gray-800 italic mt-1">"{d.summary}"</p>
-                                            <div className="grid grid-cols-2 gap-4 mt-3 text-[10px] text-gray-500 uppercase font-bold">
-                                                <div>Observations: <span className="text-gray-700 block normal-case font-normal">{d.observations}</span></div>
-                                                <div>Improvements: <span className="text-gray-700 block normal-case font-normal">{d.improvements}</span></div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </Section>
-                            </div>
-
-                            <Section title="Personnel" icon="👮">
-                                <div className="space-y-2">
-                                    {data.officers?.map((o: any) => (
-                                        <div key={o._id} className="bg-white border border-gray-200 p-2 rounded-xl flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-bold text-xs">{o.name.charAt(0)}</div>
-                                            <div>
-                                                <p className="text-xs font-bold text-gray-800">{o.name}</p>
-                                                <p className="text-[10px] text-gray-400">{o.rank} | {o.forceNumber}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </Section>
-                        </div>
+                    </div>
+                ) : (
+                    <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 shadow-sm">
+                        <p className="text-slate-500 font-medium">
+                            No shift data matches your current filters.
+                        </p>
                     </div>
                 )}
             </div>
@@ -158,23 +338,44 @@ export default function ShiftReportPage() {
     );
 }
 
-// Reuse your components below
-function Section({ title, icon, children }: any) {
+// --- Reusable UI Components ---
+
+function Section({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
     return (
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 h-full">
-            <h2 className="text-sm font-black text-gray-400 uppercase mb-4 flex items-center gap-2 italic">
-                <span className="bg-gray-100 p-2 rounded-lg text-sm">{icon}</span> {title}
-            </h2>
-            {children}
+        <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 flex flex-col gap-6">
+            <div className="flex items-center gap-4 border-b border-slate-100 pb-5">
+                <span className="bg-slate-50 p-3.5 rounded-2xl text-xl leading-none shadow-sm border border-slate-100">
+                    {icon}
+                </span>
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                    {title}
+                </h2>
+            </div>
+            <div className="flex flex-col w-full">
+                {children}
+            </div>
         </div>
     );
 }
 
 function FilterInput({ label, ...props }: any) {
     return (
-        <div className="flex flex-col space-y-1">
-            <label className="text-xs font-semibold text-gray-400 uppercase">{label}</label>
-            <input {...props} className="bg-gray-50 border-none ring-1 ring-gray-200 p-2 rounded-xl focus:ring-2 focus:ring-blue-500 transition-all outline-none" />
+        <div className="flex flex-col w-full gap-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                {label}
+            </label>
+            <input
+                {...props}
+                className="bg-slate-50 border border-slate-300 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-semibold text-slate-900 placeholder:text-slate-400 transition-all w-full"
+            />
+        </div>
+    );
+}
+
+function EmptyState({ message }: { message: string }) {
+    return (
+        <div className="p-6 border-2 border-dashed border-slate-200 rounded-2xl text-center bg-slate-50 w-full">
+            <p className="text-slate-500 text-sm font-semibold">{message}</p>
         </div>
     );
 }
