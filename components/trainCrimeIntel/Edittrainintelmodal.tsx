@@ -98,14 +98,14 @@ export default function FullScreenEditTrainIntel({ record, onClose, onSuccess }:
             })),
             primaryDutyAction: record.primaryDutyAction ?? "",
             raCases: {
-                sec141: record.raCases?.sec141 ?? 0,
-                sec144: record.raCases?.sec144 ?? 0,
-                sec145b: record.raCases?.sec145b ?? 0,
-                sec155: record.raCases?.sec155 ?? 0,
-                sec156: record.raCases?.sec156 ?? 0,
-                sec162: record.raCases?.sec162 ?? 0,
-                sec163: record.raCases?.sec163 ?? 0,
-                sec164: record.raCases?.sec164 ?? 0,
+                sec141: (record as any).raCases?.sec141 ?? 0,
+                sec144: (record as any).raCases?.sec144 ?? 0,
+                sec145b: (record as any).raCases?.sec145b ?? 0,
+                sec155: (record as any).raCases?.sec155 ?? 0,
+                sec156: (record as any).raCases?.sec156 ?? 0,
+                sec162: (record as any).raCases?.sec162 ?? 0,
+                sec163: (record as any).raCases?.sec163 ?? 0,
+                sec164: (record as any).raCases?.sec164 ?? 0,
             },
         });
         setDirty(false);
