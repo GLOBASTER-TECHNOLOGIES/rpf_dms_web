@@ -1,47 +1,72 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-export interface IDebrief extends Document {
-  staffId: mongoose.Types.ObjectId;
-  shift: string;
-  date: Date;
-  postCode?: string;
-  transcript?: string;
+// ── Single train report inside a shift debrief ──
+export interface ITrainReport {
+  trainNo?: string;
+  transcript: string;
   summary?: string;
   observations?: string;
   improvements?: string;
-  approved: boolean;
+  submittedAt: Date;
 }
+
+export interface IDebrief extends Document {
+  staffId: mongoose.Types.ObjectId;
+  shift: "Morning" | "Afternoon" | "Night";
+  date: Date;
+  postCode?: string;
+  approved: boolean;
+  reports: ITrainReport[];
+}
+
+const TrainReportSchema = new Schema<ITrainReport>(
+  {
+    trainNo: {
+      type: String,
+      default: null,
+    },
+    transcript: {
+      type: String,
+      required: true,
+    },
+    summary: String,
+    observations: String,
+    improvements: String,
+    submittedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: true }, // each report gets its own _id
+);
 
 const DebriefSchema = new Schema<IDebrief>(
   {
     staffId: {
       type: Schema.Types.ObjectId,
       ref: "Officer",
+      required: true,
     },
-
-    shift: String,
-
-    postCode: {
+    shift: {
       type: String,
+      enum: ["Morning", "Afternoon", "Night"],
+      required: true,
     },
-
     date: {
       type: Date,
       default: Date.now,
       required: true,
     },
-
-    transcript: String,
-
-    summary: String,
-
-    observations: String,
-
-    improvements: String,
-
+    postCode: {
+      type: String,
+    },
     approved: {
       type: Boolean,
       default: false,
+    },
+    reports: {
+      type: [TrainReportSchema],
+      default: [],
     },
   },
   { timestamps: true },
