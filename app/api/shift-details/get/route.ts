@@ -8,13 +8,36 @@ import ThreatCalendar from "@/models/ThreatCalendar.model";
 import TrainSchedule from "@/models/TrainSchedule";
 import TrainCrimeIntelligence from "@/models/TrainCrimeIntelligence";
 
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+function getShiftBounds(dateStr: string, shiftName: string) {
+  const istMidnightUTC = new Date(dateStr).getTime() - IST_OFFSET_MS;
+
+  let startMinutes: number;
+  let endMinutes: number;
+
+  if (shiftName === "Morning") {
+    startMinutes = 6 * 60;
+    endMinutes = 14 * 60;
+  } else if (shiftName === "Afternoon") {
+    startMinutes = 14 * 60;
+    endMinutes = 22 * 60;
+  } else {
+    startMinutes = 22 * 60;
+    endMinutes = (24 + 6) * 60;
+  }
+
+  return {
+    shiftStart: new Date(istMidnightUTC + startMinutes * 60 * 1000),
+    shiftEnd: new Date(istMidnightUTC + endMinutes * 60 * 1000),
+  };
+}
+
 export async function GET(req: NextRequest) {
   try {
     await dbConnect();
 
-    //  1. Get query params
     const { searchParams } = new URL(req.url);
-
     const date = searchParams.get("date");
     const shiftName = searchParams.get("shift");
     const post = searchParams.get("post");
@@ -26,34 +49,17 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const shiftDate = new Date(date);
-
-    // Normalize
+    const { shiftStart, shiftEnd } = getShiftBounds(date, shiftName);
     const shiftKey = shiftName.toLowerCase();
 
-    // 🕒 Time Range
-    const shiftStart = new Date(shiftDate);
-    const shiftEnd = new Date(shiftDate);
+    // 1. Shift
+    const dayStart = new Date(date);
+    const dayEnd = new Date(date);
+    dayEnd.setUTCHours(23, 59, 59, 999);
 
-    if (shiftName === "Morning") {
-      shiftStart.setHours(6, 0, 0, 0);
-      shiftEnd.setHours(14, 0, 0, 0);
-    } else if (shiftName === "Afternoon") {
-      shiftStart.setHours(14, 0, 0, 0);
-      shiftEnd.setHours(22, 0, 0, 0);
-    } else {
-      shiftStart.setHours(22, 0, 0, 0);
-      shiftEnd.setDate(shiftEnd.getDate() + 1);
-      shiftEnd.setHours(6, 0, 0, 0);
-    }
-
-    // ✅ 2. Find Shift
     const shift = await Shift.findOne({
       shiftName,
-      shiftDate: {
-        $gte: new Date(shiftDate.setHours(0, 0, 0, 0)),
-        $lte: new Date(shiftDate.setHours(23, 59, 59, 999)),
-      },
+      shiftDate: { $gte: dayStart, $lte: dayEnd },
       post: post.toUpperCase(),
     })
       .populate({
@@ -63,83 +69,79 @@ export async function GET(req: NextRequest) {
       .populate("instructions")
       .populate("officers");
 
-    // Optional: allow empty shift
-    // if (!shift) { ... } ← your choice
-
-    // ✅ 3. Instructions
+    // 2. Instructions
     const validInstructions = await InstructionModel.find({
       validFrom: { $lte: shiftEnd },
       validTo: { $gte: shiftStart },
       $or: [{ shift: shiftKey }, { shift: "all" }],
     });
 
-    // ✅ 4. Debriefs
-    const officerIds = shift?.officers || [];
-
+    // 3. Debriefs — populate staffId, reports array is embedded
     const debriefs = await DebriefModel.find({
-      staffId: { $in: officerIds },
-      date: {
-        $gte: shiftStart,
-        $lte: shiftEnd,
-      },
-    }).populate("staffId");
+      shift: shiftName,
+      date: { $gte: shiftStart, $lte: shiftEnd },
+    })
+      .populate({ path: "staffId", select: "name forceNumber rank" })
+      .lean();
 
-    // ✅ 5. Threats
+    // 4. Threats
     const threats = await ThreatCalendar.find({
       startDate: { $lte: shiftEnd },
       endDate: { $gte: shiftStart },
     });
 
-    // ✅ 6. Trains
-    const trains = await TrainSchedule.find(
+    // 5. Trains
+    const allTrains = await TrainSchedule.find(
       {},
       "trainNumber arrivalTime trainName platform",
     );
 
-    const trainsInShift = trains.filter((train) => {
-      if (!train.arrivalTime) return false;
-      if (!train.arrivalTime.includes(":")) return false;
-
+    const trainsInShift = allTrains.filter((train) => {
+      if (!train.arrivalTime?.includes(":")) return false;
       const [h, m] = train.arrivalTime.split(":").map(Number);
       if (isNaN(h) || isNaN(m)) return false;
-
-      const arrival = new Date(shiftDate);
-      arrival.setHours(h, m, 0, 0);
-
-      return arrival >= shiftStart && arrival <= shiftEnd;
+      const arrivalUTC =
+        new Date(date).getTime() - IST_OFFSET_MS + (h * 60 + m) * 60 * 1000;
+      return (
+        arrivalUTC >= shiftStart.getTime() && arrivalUTC <= shiftEnd.getTime()
+      );
     });
 
-    const trainNumbers = trainsInShift.map((t) => t.trainNumber);
-
-    // ✅ 7. Crime Intel
+    // 6. Crime Intel
     const crimeIntel = await TrainCrimeIntelligence.find({
-      trainNumber: { $in: trainNumbers },
+      trainNumber: { $in: trainsInShift.map((t) => t.trainNumber) },
     });
+
+    // 7. Flatten debrief reports for easy rendering
+    //    Each entry = one train report, with officer info attached
+    const debriefReports = debriefs.flatMap((d) =>
+      (d.reports ?? []).map((r: any) => ({
+        ...r,
+        officer: d.staffId, // populated officer object
+        debriefId: d._id,
+        shift: d.shift,
+        approved: d.approved,
+      })),
+    );
+
     const data = {
-      // Flattening the main shift details so they aren't double-nested
       _id: shift?._id,
       shiftName: shift?.shiftName || shiftName,
       shiftDate: date,
       post: shift?.post || post,
-
-      // Detailed Arrays
       briefingDocument: shift?.briefingDocument || null,
       officers: shift?.officers || [],
       instructions: validInstructions || [],
-      debriefs: debriefs || [],
+      debriefs, // raw debrief docs (one per officer per shift)
+      debriefReports, // flattened individual train reports
       threats: threats || [],
       trains: trainsInShift || [],
       crimeIntel: crimeIntel || [],
     };
-    console.log(data.debriefs);
-    // 🎯 Final Response
-    return NextResponse.json({
-      success: true,
-      data: data,
-    });
+
+    return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error("SHIFT REPORT ERROR:", error);
-
     return NextResponse.json(
       { success: false, message: "Server error" },
       { status: 500 },
