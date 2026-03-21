@@ -4,7 +4,7 @@ import Debrief from "@/models/Debrief.model";
 import connectDB from "@/config/dbConnect";
 import { generateDebriefAnalysis } from "@/config/debriefAI";
 
-function getShiftContext() {
+function getShiftContext(): { shift: "Morning" | "Afternoon" | "Night" } {
   const now = new Date();
   const istTime = new Date(
     now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
@@ -46,7 +46,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { transcript } = await req.json();
+    // ── Flutter sends "trainNumber", destructure accordingly ─────────────
+    const { transcript, trainNumber } = await req.json();
+
     if (!transcript?.trim())
       return NextResponse.json(
         { success: false, message: "Transcript required" },
@@ -55,7 +57,23 @@ export async function POST(req: NextRequest) {
 
     const { shift } = getShiftContext();
 
-    let aiResult;
+    const nowIST = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
+    );
+    const startOfDayIST = new Date(nowIST);
+    startOfDayIST.setHours(0, 0, 0, 0);
+    const endOfDayIST = new Date(nowIST);
+    endOfDayIST.setHours(23, 59, 59, 999);
+
+    const istOffsetMs = 5.5 * 60 * 60 * 1000;
+    const startUTC = new Date(startOfDayIST.getTime() - istOffsetMs);
+    const endUTC = new Date(endOfDayIST.getTime() - istOffsetMs);
+
+    let aiResult: {
+      summary: string;
+      observations: string;
+      improvements: string;
+    };
     try {
       aiResult = await generateDebriefAnalysis(transcript);
     } catch {
@@ -66,10 +84,8 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    const debrief = await Debrief.create({
-      staffId: decoded.id,
-      shift,
-      date: new Date(), // actual UTC timestamp — falls correctly in shift window
+    const newReport = {
+      trainNo: trainNumber?.trim() || null, // ← fixed: was trainNo (undefined), now trainNumber
       transcript,
       summary: aiResult.summary,
       observations: Array.isArray(aiResult.observations)
@@ -78,9 +94,38 @@ export async function POST(req: NextRequest) {
       improvements: Array.isArray(aiResult.improvements)
         ? aiResult.improvements.join("\n")
         : aiResult.improvements,
-    });
+      submittedAt: new Date(),
+    };
 
-    return NextResponse.json({ success: true, data: debrief }, { status: 201 });
+    const debrief = await Debrief.findOneAndUpdate(
+      {
+        staffId: decoded.id,
+        shift,
+        date: { $gte: startUTC, $lte: endUTC },
+      },
+      {
+        $setOnInsert: {
+          staffId: decoded.id,
+          shift,
+          date: new Date(),
+          approved: false,
+        },
+        $push: { reports: newReport },
+      },
+      {
+        new: true,
+        upsert: true,
+      },
+    );
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: debrief,
+        reportCount: debrief.reports.length,
+      },
+      { status: 201 },
+    );
   } catch (error) {
     console.error("CREATE DEBRIEF ERROR:", error);
     return NextResponse.json(
