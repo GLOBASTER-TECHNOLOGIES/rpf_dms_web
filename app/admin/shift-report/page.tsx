@@ -5,9 +5,9 @@ import { useState } from "react";
 import { generateShiftPDF } from "@/config/pdfGenerator";
 
 export default function ShiftReportPage() {
-    const [date, setDate] = useState("");
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [shift, setShift] = useState("Morning");
-    const [post, setPost] = useState("");
+    const [post, setPost] = useState("TPJ");
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
@@ -21,7 +21,7 @@ export default function ShiftReportPage() {
         setHasSearched(true);
         try {
             const res = await fetch(
-                `/api/shift-details/get?date=${date}&shift=${shift}&post=${post}`,
+                `/api/shift-report/get?date=${date}&shift=${shift}&post=${post}`,
             );
             const json = await res.json();
             if (json.success && json.data) {
