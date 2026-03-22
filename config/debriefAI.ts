@@ -27,9 +27,9 @@ STRICT RULES:
 FORMAT:
 
 {
- "summary": "short paragraph summarizing the duty report",
- "observations": "key operational observations",
- "improvements": "suggested improvements for future shifts"
+ "summary": "short paragraph summarizing the duty report in english",
+ "observations": "key operational observations in english",
+ "improvements": "suggested improvements for future shifts in english"
 }
 
 TRANSCRIPT:
