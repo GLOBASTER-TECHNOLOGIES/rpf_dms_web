@@ -291,7 +291,11 @@ export default function TrainCrimeIntelligencePage() {
                                                     {/* Top Crime Indicator (if available) */}
                                                     {rec.crimeProfile && rec.crimeProfile.length > 0 && (
                                                         <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider truncate max-w-xs">
-                                                            Primary Threat: {rec.crimeProfile.sort((a, b) => b.count - a.count)[0].category}
+                                                            Primary Threat: {
+                                                                rec.crimeProfile?.length
+                                                                    ? rec.crimeProfile.sort((a, b) => b.count - a.count)[0].crimeType ?? "N/A"
+                                                                    : "N/A"
+                                                            }
                                                         </p>
                                                     )}
                                                 </td>
