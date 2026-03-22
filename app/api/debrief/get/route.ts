@@ -8,7 +8,12 @@ export async function GET(req: NextRequest) {
   try {
     await connectDB();
 
-    const token = req.cookies.get("accessToken")?.value;
+    const cookieToken = req.cookies.get("accessToken")?.value;
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const bearerToken = authHeader.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : null;
+    const token = cookieToken ?? bearerToken;
 
     if (!token) {
       return NextResponse.json(
@@ -21,12 +26,11 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
 
-    // ── Filters ───────────────────────────────────────────────────────────
     const postCode = searchParams.get("postCode");
-    const shift = searchParams.get("shift"); // Morning | Afternoon | Night
+    const shift = searchParams.get("shift");
     const staffId = searchParams.get("staffId");
-    const dateParam = searchParams.get("date"); // YYYY-MM-DD in IST
-    const approved = searchParams.get("approved"); // "true" | "false"
+    const dateParam = searchParams.get("date");
+    const approved = searchParams.get("approved");
 
     const filter: Record<string, unknown> = {};
 
@@ -37,7 +41,6 @@ export async function GET(req: NextRequest) {
       filter.approved = approved === "true";
     }
 
-    // ── Date range (full IST day → UTC) ───────────────────────────────────
     if (dateParam) {
       const [year, month, day] = dateParam.split("-").map(Number);
       const istOffsetMs = 5.5 * 60 * 60 * 1000;
@@ -51,23 +54,17 @@ export async function GET(req: NextRequest) {
       };
     }
 
-    // ── Query ─────────────────────────────────────────────────────────────
     const debriefs = await Debrief.find(filter)
       .populate({ path: "staffId", select: "name forceNumber rank" })
       .sort({ createdAt: -1 })
       .lean();
 
-    // ── Shape response — include report count for each debrief ────────────
     const data = debriefs.map((d) => ({
       ...d,
       reportCount: Array.isArray(d.reports) ? d.reports.length : 0,
     }));
 
-    return NextResponse.json({
-      success: true,
-      count: data.length,
-      data,
-    });
+    return NextResponse.json({ success: true, count: data.length, data });
   } catch (error) {
     console.error("GET DEBRIEF ERROR:", error);
     return NextResponse.json(
