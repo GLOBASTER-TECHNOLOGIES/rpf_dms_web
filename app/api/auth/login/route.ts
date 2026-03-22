@@ -7,7 +7,7 @@ import connectDB from "@/config/dbConnect";
 
 const generateAccessToken = (id: string, role: string) => {
   return jwt.sign({ id, role }, process.env.JWT_ACCESS_SECRET as string, {
-    expiresIn: "1h",
+    expiresIn: "8h",
   });
 };
 
@@ -127,6 +127,8 @@ export async function POST(req: NextRequest) {
                 name: user.name,
                 forceNumber: user.forceNumber,
                 rank: user.rank,
+                postCode: user.postCode, // add
+                division: user.division,
               }
             : {
                 id: user._id,
@@ -149,7 +151,7 @@ export async function POST(req: NextRequest) {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
-        maxAge: 60 * 60,
+        maxAge: 60 * 60 * 8,
         path: "/",
       });
 
