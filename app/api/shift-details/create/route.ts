@@ -75,10 +75,20 @@ export async function POST(req: NextRequest) {
 
     const briefing = await Briefing.findOne({
       post: officer.postCode,
-      shift: shiftName, // "Morning" | "Afternoon" | "Night"
-      dutyDate: { $gte: dutyDateStart, $lte: dutyDateEnd },
-    });
+      shift: shiftName,
+    })
+      .sort({ dutyDate: -1 })
+      .lean();
 
+    if (!briefing) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `No briefing found for post ${officer.postCode}, ${shiftName} shift.`,
+        },
+        { status: 404 },
+      );
+    }
     if (!briefing) {
       return NextResponse.json(
         {
@@ -89,14 +99,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("Shift create →", {
-      shiftName,
-      shiftDate,
-      post: officer.postCode,
-      briefingDocument: briefing._id,
-      officers,
-      createdBy: officer._id,
-    });
+    // console.log("Shift create →", {
+    //   shiftName,
+    //   shiftDate,
+    //   post: officer.postCode,
+    //   briefingDocument: briefing._id,
+    //   officers,
+    //   createdBy: officer._id,
+    // });
 
     // ── 7. Create shift ───────────────────────────────────────
     const shift = await Shift.create({
