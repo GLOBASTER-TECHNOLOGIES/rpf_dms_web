@@ -2,15 +2,16 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 // --- PROFESSIONAL COLOR THEME ---
-const SLATE_900: [number, number, number] = [15, 23, 42]; // Primary Headers & Text
-const SLATE_800: [number, number, number] = [30, 41, 59]; // Secondary Headers
-const SLATE_600: [number, number, number] = [71, 85, 105]; // Subtext / Secondary Text
-const SLATE_100: [number, number, number] = [241, 245, 249]; // Light Backgrounds
-const INDIGO_600: [number, number, number] = [79, 70, 229]; // Accents / Primary Brand
-const RED_600: [number, number, number] = [220, 38, 38]; // High Risk
+const SLATE_900: [number, number, number] = [15, 23, 42];
+const SLATE_800: [number, number, number] = [30, 41, 59];
+const SLATE_600: [number, number, number] = [71, 85, 105];
+const SLATE_100: [number, number, number] = [241, 245, 249];
+const INDIGO_600: [number, number, number] = [79, 70, 229];
+const RED_600: [number, number, number] = [220, 38, 38];
 const WHITE: [number, number, number] = [255, 255, 255];
+const BORDER_COLOR: [number, number, number] = [226, 232, 240];
 
-// Helper to reliably load images in browser before adding to jsPDF
+// ── HELPERS ───────────────────────────────────────────────────────────────────
 const loadImage = (url: string): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -20,91 +21,126 @@ const loadImage = (url: string): Promise<HTMLImageElement> => {
   });
 };
 
-function sectionHeader(doc: jsPDF, text: string, y: number): number {
-  const pageWidth = doc.internal.pageSize.getWidth();
+/**
+ * Dynamically fetches a .ttf font file and converts it to Base64
+ * so jsPDF can embed it for multi-language (Unicode) support.
+ */
+const loadFontAsBase64 = async (url: string): Promise<string> => {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Failed to fetch font at ${url}`);
+  const blob = await response.blob();
 
-  // Clean, modern section header style (light background, indigo accent)
-  doc.setFillColor(...SLATE_100);
-  doc.rect(14, y, pageWidth - 28, 8, "F");
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      const base64 = result.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
 
-  // Left accent line
+// Notice: Added fontName parameter here so headers use the correct language font
+function sectionHeader(
+  doc: jsPDF,
+  text: string,
+  y: number,
+  fontName: string,
+): number {
+  doc.setFont(fontName, "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(...SLATE_900);
+  doc.text(text.toUpperCase(), 14, y + 6);
+
+  const textWidth = doc.getTextWidth(text.toUpperCase());
   doc.setFillColor(...INDIGO_600);
-  doc.rect(14, y, 2, 8, "F");
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(...SLATE_800);
-  doc.text(text.toUpperCase(), 20, y + 5.5);
+  doc.rect(14, y + 8.5, textWidth, 1.5, "F");
 
   return y + 14;
 }
 
 function checkPageBreak(doc: jsPDF, y: number, needed = 25): number {
   const pageHeight = doc.internal.pageSize.getHeight();
-  // If the current Y + the space needed exceeds the bottom margin, trigger a new page
   if (y + needed > pageHeight - 20) {
     doc.addPage();
-    return 20; // Return the starting Y coordinate for the new page
+    return 16;
   }
   return y;
 }
 
-// Ensure the function is async so we can await the logo image loading
+// ── MAIN EXPORT ───────────────────────────────────────────────────────────────
 export const generateShiftPDF = async (data: any) => {
   if (!data) return;
 
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
+
+  // Define font tracking
+  const CUSTOM_FONT = "CustomUnicodeFont";
+  const FALLBACK_FONT = "helvetica";
+  let activeFont = FALLBACK_FONT;
+
+  // ── 0. LOAD MULTI-LANGUAGE FONT ────────────────────────────────────────────
+  try {
+    // Make sure this matches the exact filename in your public folder!
+    const fontBase64 = await loadFontAsBase64("/Arial Unicode MS.ttf");
+
+    doc.addFileToVFS("ArialUnicode.otf", fontBase64);
+    doc.addFont("ArialUnicode.otf", CUSTOM_FONT, "normal");
+    doc.addFont("ArialUnicode.otf", CUSTOM_FONT, "bold");
+
+    activeFont = CUSTOM_FONT;
+  } catch (err) {
+    console.warn("Unicode font failed to load. Falling back to default.", err);
+  }
+
   const timestamp = new Date().toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",
     dateStyle: "medium",
     timeStyle: "short",
   });
 
-  // ── 1. HEADER & BRANDING (White Background) ───────────────────────────
+  // ── 1. HEADER & BRANDING ───────────────────────────────────────────────────
   try {
-    // Awaiting the image guarantees jsPDF can grab the data before generating
     const logo = await loadImage("/rpf_logo.png");
-    doc.addImage(logo, "PNG", 14, 8, 22, 22);
-  } catch (error) {
-    console.warn("Logo could not be loaded, proceeding without it.", error);
+    doc.addImage(logo, "PNG", 14, 10, 24, 24);
+  } catch {
+    console.warn("Logo could not be loaded. Continuing without logo.");
   }
 
-  // "RAILWAY PROTECTION FORCE"
   doc.setTextColor(...SLATE_900);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(activeFont, "bold"); // Replaced "helvetica" with activeFont
   doc.setFontSize(16);
-  doc.text("RAILWAY PROTECTION FORCE", 40, 15);
+  doc.text("RAILWAY PROTECTION FORCE", 42, 16);
 
-  // Division Subtitle
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.setFont(activeFont, "normal");
   doc.setTextColor(...SLATE_600);
   doc.text(
     "Intelligence & Duty Reporting System • Tiruchchirappalli Division",
-    40,
-    21,
+    42,
+    22,
   );
 
-  // "SHIFT OPERATIONS REPORT"
-  doc.setFont("helvetica", "bold");
+  doc.setFont(activeFont, "bold");
   doc.setFontSize(11);
   doc.setTextColor(...SLATE_900);
-  doc.text(`SHIFT OPERATIONS REPORT`, 40, 28);
+  doc.text("SHIFT OPERATIONS REPORT", 42, 30);
 
-  // Timestamp
-  doc.setFont("helvetica", "italic");
+  doc.setFont(activeFont, "italic");
   doc.setFontSize(9);
   doc.setTextColor(...SLATE_600);
-  doc.text(`Generated: ${timestamp}`, pageWidth - 14, 28, { align: "right" });
+  doc.text(`Generated: ${timestamp}`, pageWidth - 14, 30, { align: "right" });
 
-  // Subtle header divider line
-  doc.setDrawColor(226, 232, 240); // slate-200
-  doc.line(14, 34, pageWidth - 14, 34);
+  doc.setDrawColor(...BORDER_COLOR);
+  doc.line(14, 38, pageWidth - 14, 38);
 
-  // ── 2. METADATA ROW ─────────────────────────────────────────────
-  let y = 42;
+  let y = 44;
+
+  // ── 2. METADATA ROW ────────────────────────────────────────────────────────
   autoTable(doc, {
     startY: y,
     head: [["SHIFT DATE", "SHIFT TYPE", "POST / LOCATION", "TOTAL PERSONNEL"]],
@@ -113,23 +149,24 @@ export const generateShiftPDF = async (data: any) => {
         data.shiftDate || "—",
         data.shiftName ? `${data.shiftName.toUpperCase()} SHIFT` : "—",
         data.post || "—",
-        data.officers?.length || 0,
+        data.officers?.length || "0",
       ],
     ],
     theme: "grid",
+    styles: { font: activeFont }, // Inject font into table
     headStyles: {
       fillColor: SLATE_100,
       textColor: SLATE_600,
       fontStyle: "bold",
-      fontSize: 7,
-      lineColor: [226, 232, 240],
+      fontSize: 8,
+      lineColor: BORDER_COLOR,
       lineWidth: 0.1,
     },
     bodyStyles: {
-      fontSize: 9,
+      fontSize: 10,
       fontStyle: "bold",
       textColor: SLATE_800,
-      lineColor: [226, 232, 240],
+      lineColor: BORDER_COLOR,
       lineWidth: 0.1,
     },
     margin: { left: 14, right: 14 },
@@ -137,26 +174,28 @@ export const generateShiftPDF = async (data: any) => {
 
   y = (doc as any).lastAutoTable.finalY + 12;
 
-  // ── 3. COMMANDER's BRIEFING ───────────────────────────────────
-  y = checkPageBreak(doc, y, 45);
-  y = sectionHeader(doc, "1. SO's Briefing Script", y);
+  // ── 3. SO'S BRIEFING ──────────────────────────────────────────────────────
+  y = checkPageBreak(doc, y, 40);
+  y = sectionHeader(doc, "1. SO's Briefing Script", y, activeFont);
+
   const script =
     data.briefingDocument?.briefingScript ||
     "No briefing script recorded for this shift.";
 
-  doc.setFont("helvetica", "italic");
-  doc.setFontSize(9);
-  doc.setTextColor(...SLATE_600);
+  doc.setFont(activeFont, "italic");
+  doc.setFontSize(10);
+  doc.setTextColor(...SLATE_800);
 
   const splitScript = doc.splitTextToSize(`"${script}"`, pageWidth - 28);
   doc.text(splitScript, 14, y);
+
   y += splitScript.length * 5 + 10;
 
-  // ── 4. DEPLOYED PERSONNEL ────────────────────────────────────
-  y = checkPageBreak(doc, y, 50);
-  y = sectionHeader(doc, "2. Deployed Personnel", y);
+  // ── 4. DEPLOYED PERSONNEL ─────────────────────────────────────────────────
+  y = checkPageBreak(doc, y, 40);
+  y = sectionHeader(doc, "2. Deployed Personnel", y, activeFont);
 
-  if (data.officers?.length > 0) {
+  if (data.officers && data.officers.length > 0) {
     autoTable(doc, {
       startY: y,
       head: [["#", "OFFICER NAME", "FORCE NUMBER", "RANK", "ASSIGNMENT"]],
@@ -168,34 +207,35 @@ export const generateShiftPDF = async (data: any) => {
         o.postCode || data.post || "—",
       ]),
       theme: "plain",
+      styles: { font: activeFont }, // Inject font into table
       headStyles: {
         fillColor: SLATE_900,
         textColor: WHITE,
-        fontSize: 8,
+        fontSize: 8.5,
         fontStyle: "bold",
       },
       bodyStyles: {
-        fontSize: 8,
+        fontSize: 9.5,
         textColor: SLATE_800,
-        lineColor: [226, 232, 240],
-        lineWidth: 0.1, // ✅ correct property
+        lineColor: BORDER_COLOR,
+        lineWidth: 0.1,
       },
       alternateRowStyles: { fillColor: SLATE_100 },
       margin: { left: 14, right: 14 },
     });
     y = (doc as any).lastAutoTable.finalY + 12;
   } else {
-    doc.setFontSize(8);
-    doc.setTextColor(...SLATE_600);
-    doc.text("No personnel records found.", 14, y);
+    doc.setFont(activeFont, "italic");
+    doc.setFontSize(9);
+    doc.text("No personnel deployed.", 14, y);
     y += 12;
   }
 
-  // ── 5. DUTY INSTRUCTIONS ─────────────────────────────────────
-  y = checkPageBreak(doc, y, 50);
-  y = sectionHeader(doc, "3. Standard Duty Instructions", y);
+  // ── 5. DUTY INSTRUCTIONS ──────────────────────────────────────────────────
+  y = checkPageBreak(doc, y, 40);
+  y = sectionHeader(doc, "3. Standard Duty Instructions", y, activeFont);
 
-  if (data.instructions?.length > 0) {
+  if (data.instructions && data.instructions.length > 0) {
     autoTable(doc, {
       startY: y,
       head: [["TITLE", "INSTRUCTION DETAILS", "VALIDITY"]],
@@ -209,27 +249,29 @@ export const generateShiftPDF = async (data: any) => {
         return [ins.title || "—", ins.instruction || "—", `${from} to ${to}`];
       }),
       theme: "grid",
-      headStyles: { fillColor: SLATE_900, textColor: WHITE, fontSize: 8 },
-      bodyStyles: { fontSize: 8, textColor: SLATE_800 },
+      styles: { font: activeFont, overflow: "linebreak", cellPadding: 4 }, // Inject font into table
+      headStyles: { fillColor: SLATE_900, textColor: WHITE, fontSize: 8.5 },
+      bodyStyles: { fontSize: 9.5, textColor: SLATE_800, valign: "top" },
       columnStyles: {
-        0: { cellWidth: 40, fontStyle: "bold" },
-        1: { cellWidth: 90 },
+        0: { cellWidth: 35, fontStyle: "bold", textColor: SLATE_900 },
+        1: { cellWidth: "auto" },
+        2: { cellWidth: 42 },
       },
       margin: { left: 14, right: 14 },
     });
     y = (doc as any).lastAutoTable.finalY + 12;
   } else {
-    doc.setFontSize(8);
-    doc.setTextColor(...SLATE_600);
-    doc.text("No active instructions for this shift.", 14, y);
+    doc.setFont(activeFont, "italic");
+    doc.setFontSize(9);
+    doc.text("No instructions recorded.", 14, y);
     y += 12;
   }
 
-  // ── 6. CRIME INTELLIGENCE ────────────────────────────────────
-  y = checkPageBreak(doc, y, 50);
-  y = sectionHeader(doc, "4. Risk Analysis & Intelligence", y);
+  // ── 6. CRIME INTELLIGENCE ─────────────────────────────────────────────────
+  y = checkPageBreak(doc, y, 40);
+  y = sectionHeader(doc, "4. Risk Analysis & Intelligence", y, activeFont);
 
-  if (data.crimeIntel?.length > 0) {
+  if (data.crimeIntel && data.crimeIntel.length > 0) {
     autoTable(doc, {
       startY: y,
       head: [["TRAIN", "RISK LEVEL", "REQUIRED ACTION"]],
@@ -239,8 +281,9 @@ export const generateShiftPDF = async (data: any) => {
         c.primaryDutyAction || "—",
       ]),
       theme: "grid",
-      headStyles: { fillColor: INDIGO_600, textColor: WHITE, fontSize: 8 },
-      bodyStyles: { fontSize: 8, textColor: SLATE_800 },
+      styles: { font: activeFont, overflow: "linebreak", cellPadding: 4 }, // Inject font into table
+      headStyles: { fillColor: INDIGO_600, textColor: WHITE, fontSize: 8.5 },
+      bodyStyles: { fontSize: 9.5, textColor: SLATE_800, valign: "top" },
       columnStyles: {
         0: { cellWidth: 35, fontStyle: "bold" },
         1: { cellWidth: 35, fontStyle: "bold", textColor: RED_600 },
@@ -250,38 +293,35 @@ export const generateShiftPDF = async (data: any) => {
     });
     y = (doc as any).lastAutoTable.finalY + 12;
   } else {
-    doc.setFontSize(8);
-    doc.setTextColor(...SLATE_600);
-    doc.text("No active crime intelligence alerts for this shift.", 14, y);
+    doc.setFont(activeFont, "italic");
+    doc.setFontSize(9);
+    doc.text("No intelligence data recorded.", 14, y);
     y += 12;
   }
 
-  // ── 7. POST-SHIFT DEBRIEFS ───────────────────────────────────
-  // High threshold (70) ensures the Section Header + First Officer Block don't split
-  y = checkPageBreak(doc, y, 70);
-  y = sectionHeader(doc, "5. Officer Post-Shift Debriefs", y);
+  // ── 7. POST-SHIFT DEBRIEFS ────────────────────────────────────────────────
+  y = checkPageBreak(doc, y, 35);
+  y = sectionHeader(doc, "5. Officer Post-Shift Debriefs", y, activeFont);
 
-  if (data.debriefs?.length > 0) {
+  if (data.debriefs && data.debriefs.length > 0) {
     data.debriefs.forEach((d: any) => {
-      // High threshold (50) ensures the Officer Header + AutoTable head stay together
-      y = checkPageBreak(doc, y, 50);
+      y = checkPageBreak(doc, y, 40);
 
-      const officerName = d.staffId?.name || "Unknown Officer";
-      const forceNo = d.staffId?.forceNumber || "N/A";
-      const rank = d.staffId?.rank || "";
-
-      // Officer Header Block
       doc.setFillColor(...SLATE_100);
       doc.rect(14, y, pageWidth - 28, 8, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8.5);
+      doc.setFont(activeFont, "bold");
+      doc.setFontSize(9);
       doc.setTextColor(...SLATE_800);
+
+      const officerName = (d.staffId?.name || "Unknown").toUpperCase();
+      const officerRank = (d.staffId?.rank || "Rank N/A").toUpperCase();
+      const officerId = d.staffId?.forceNumber || "ID N/A";
+
       doc.text(
-        `OFFICER: ${officerName.toUpperCase()}  |  ${rank.toUpperCase()}  |  ID: ${forceNo}`,
+        `OFFICER: ${officerName}  |  ${officerRank}  |  ID: ${officerId}`,
         16,
         y + 5.5,
       );
-
       y += 10;
 
       if (d.reports && d.reports.length > 0) {
@@ -289,7 +329,7 @@ export const generateShiftPDF = async (data: any) => {
           startY: y,
           head: [
             [
-              "TRAIN/TIME",
+              "TRAIN / TIME",
               "SUMMARY / TRANSCRIPT",
               "OBSERVATIONS",
               "IMPROVEMENTS",
@@ -310,101 +350,91 @@ export const generateShiftPDF = async (data: any) => {
             let textContent = "";
             if (r.transcript) textContent += `TRANSCRIPT:\n${r.transcript}\n\n`;
             if (r.summary) textContent += `SUMMARY:\n${r.summary}`;
-            if (!textContent) textContent = "—";
 
             return [
               trainStr,
-              textContent.trim(),
+              textContent.trim() || "—",
               r.observations || "—",
               r.improvements || "—",
             ];
           }),
           theme: "grid",
+          styles: { font: activeFont, overflow: "linebreak", cellPadding: 4 }, // Inject font into table
           headStyles: {
-            fillColor: [226, 232, 240], // Light Gray Header
+            fillColor: BORDER_COLOR,
             textColor: SLATE_900,
-            fontSize: 7.5,
+            fontSize: 8,
             fontStyle: "bold",
           },
-          bodyStyles: { fontSize: 8, textColor: SLATE_600, valign: "top" },
+          bodyStyles: { fontSize: 9, textColor: SLATE_600, valign: "top" },
           columnStyles: {
-            0: { cellWidth: 25, fontStyle: "bold", textColor: SLATE_800 },
-            1: { cellWidth: 60 },
-            2: { cellWidth: 48 },
-            3: { cellWidth: 48 },
+            0: { cellWidth: 28, fontStyle: "bold", textColor: SLATE_800 },
+            1: { cellWidth: "auto" },
+            2: { cellWidth: 40 },
+            3: { cellWidth: 40 },
           },
           margin: { left: 14, right: 14 },
         });
         y = (doc as any).lastAutoTable.finalY + 8;
       } else {
-        doc.setFont("helvetica", "italic");
-        doc.setFontSize(8);
-        doc.setTextColor(...SLATE_600);
-        doc.text("No specific train reports logged.", 16, y + 3);
-        y += 10;
+        doc.setFont(activeFont, "italic");
+        doc.setFontSize(9);
+        doc.text("No reports submitted by this officer.", 14, y);
+        y += 12;
       }
     });
   } else {
-    doc.setFontSize(8);
-    doc.setTextColor(...SLATE_600);
-    doc.text("No debriefs have been submitted for this shift yet.", 14, y);
+    doc.setFont(activeFont, "italic");
+    doc.setFontSize(9);
+    doc.text("No debriefs recorded.", 14, y);
     y += 12;
   }
 
-  // ── 8. SIGNATURE BLOCK ───────────────────────────────────────
+  // ── 8. SIGNATURE BLOCK ────────────────────────────────────────────────────
   y = checkPageBreak(doc, y, 40);
   y += 20;
 
   doc.setDrawColor(...SLATE_600);
   doc.setLineWidth(0.2);
 
-  // Left Signature
+  // Duty Officer
   doc.line(14, y, 70, y);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
+  doc.setFont(activeFont, "bold");
+  doc.setFontSize(9);
   doc.setTextColor(...SLATE_800);
   doc.text("Duty Officer Signature", 14, y + 5);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
+  doc.setFont(activeFont, "normal");
+  doc.setFontSize(8);
   doc.setTextColor(...SLATE_600);
   doc.text("Name / Rank / Date", 14, y + 9);
 
-  // Right Signature
+  // Post In-charge
   doc.line(pageWidth - 70, y, pageWidth - 14, y);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
+  doc.setFont(activeFont, "bold");
+  doc.setFontSize(9);
   doc.setTextColor(...SLATE_800);
   doc.text("Post In-charge (IPF)", pageWidth - 70, y + 5);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
+  doc.setFont(activeFont, "normal");
+  doc.setFontSize(8);
   doc.setTextColor(...SLATE_600);
   doc.text("Name / Rank / Date", pageWidth - 70, y + 9);
 
-  // ── 9. FOOTER & PAGE NUMBERS ─────────────────────────────────
+  // ── 9. FOOTER & PAGE NUMBERS ──────────────────────────────────────────────
   const totalPages = (doc as any).internal.getNumberOfPages();
-
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
-
-    // Top border line for footer
-    doc.setDrawColor(226, 232, 240);
+    doc.setDrawColor(...BORDER_COLOR);
     doc.line(14, pageHeight - 12, pageWidth - 14, pageHeight - 12);
 
-    doc.setFontSize(7);
+    doc.setFontSize(8);
     doc.setTextColor(...SLATE_600);
-
     doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 6, {
       align: "center",
     });
-
-    doc.text("Intelligence & Duty Reporting System", 14, pageHeight - 6);
-
-    doc.text("RESTRICTED CIRCULATION", pageWidth - 14, pageHeight - 6, {
-      align: "right",
-    });
+    doc.text("RPF DMS System", 14, pageHeight - 6);
   }
 
-  // Save the PDF
+  // Save the document
   const safePost = (data.post || "UNKNOWN").replace(/\s+/g, "");
   const safeShift = (data.shiftName || "SHIFT").replace(/\s+/g, "");
   doc.save(`ShiftReport_${safePost}_${safeShift}.pdf`);
