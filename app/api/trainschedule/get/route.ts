@@ -9,6 +9,33 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
+    const shift = searchParams.get("shift");
+
+    if (shift) {
+      let timeFilter = {};
+
+      if (shift === "Morning") {
+        timeFilter = { arrivalTime: { $gte: "06:00", $lt: "14:00" } };
+      } else if (shift === "Afternoon") {
+        timeFilter = { arrivalTime: { $gte: "14:00", $lt: "22:00" } };
+      } else if (shift === "Night") {
+        timeFilter = {
+          $or: [
+            { arrivalTime: { $gte: "22:00" } },
+            { arrivalTime: { $lt: "06:00" } },
+          ],
+        };
+      }
+
+      const trains = await TrainSchedule.find(timeFilter).sort({
+        arrivalTime: 1,
+      });
+      return NextResponse.json({
+        success: true,
+        count: trains.length,
+        data: trains,
+      });
+    }
 
     if (id) {
       if (!mongoose.Types.ObjectId.isValid(id)) {
