@@ -24,38 +24,52 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const decoded = jwt.verify(
-      refreshToken,
-      process.env.JWT_REFRESH_SECRET as string,
-    ) as any;
-
-    let user;
-
-    if (decoded.role === "officer") {
-      user = await Officer.findById(decoded.id).select("+refreshToken");
+    let decoded: any;
+    try {
+      decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET as string);
+    } catch {
+      // Token expired or malformed — clear cookies and force re-login
+      return clearAndUnauthorize("Refresh token expired or invalid");
     }
 
-    if (decoded.role === "post") {
+    let user;
+    if (decoded.role === "officer") {
+      user = await Officer.findById(decoded.id).select("+refreshToken");
+    } else if (decoded.role === "post") {
       user = await Post.findById(decoded.id).select("+refreshToken");
     }
 
-    if (!user || user.refreshToken !== refreshToken) {
-      return NextResponse.json(
-        { message: "Invalid refresh token" },
-        { status: 403 },
-      );
+    if (!user) {
+      return clearAndUnauthorize("User not found");
     }
 
-    const newAccessToken = generateAccessToken(
-      user._id.toString(),
-      decoded.role,
-    );
+    // ⚠️ Token mismatch — another device logged in and overwrote the DB token
+    // Clear DB token + cookies and force re-login
+    if (user.refreshToken !== refreshToken) {
+      if (decoded.role === "officer") {
+        await Officer.findByIdAndUpdate(decoded.id, { refreshToken: null });
+      } else {
+        await Post.findByIdAndUpdate(decoded.id, { refreshToken: null });
+      }
+      return clearAndUnauthorize("Session conflict detected. Please log in again.");
+    }
+
+    const newAccessToken = generateAccessToken(user._id.toString(), decoded.role);
 
     return NextResponse.json({ accessToken: newAccessToken }, { status: 200 });
+
   } catch (error) {
-    return NextResponse.json(
-      { message: "Invalid or expired refresh token" },
-      { status: 403 },
-    );
+    console.error("Refresh error:", error);
+    return clearAndUnauthorize("Server error");
   }
+}
+
+function clearAndUnauthorize(message: string) {
+  const response = NextResponse.json(
+    { success: false, message },
+    { status: 401 }, // 401 so proxy knows to redirect to /login, not retry
+  );
+  response.cookies.delete("accessToken");
+  response.cookies.delete("refreshToken");
+  return response;
 }
