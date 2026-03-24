@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 // Import the PDF function from your separate file
 import { generateShiftPDF } from "@/config/pdfGenerator";
 
@@ -39,7 +40,22 @@ export default function ShiftReportPage() {
 
     return (
         <div className="min-h-screen bg-slate-50 p-4 md:p-8 lg:p-12 font-sans text-slate-900 flex justify-center">
-            <div className="w-full max-w-[800px] space-y-8">
+            <div className="w-full max-w-[800px] space-y-6">
+
+                {/* --- BACK NAVIGATION --- */}
+                <div className="flex items-center">
+                    <Link
+                        href="/admin"
+                        className="group flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors"
+                    >
+                        <span className="bg-slate-200 group-hover:bg-indigo-100 group-hover:text-indigo-600 text-slate-600 p-1.5 rounded-lg transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path fillRule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z" />
+                            </svg>
+                        </span>
+                        Back to Admin Dashboard
+                    </Link>
+                </div>
 
                 {/* --- HEADER & FILTERS --- */}
                 <header className="flex flex-col gap-6 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200">
