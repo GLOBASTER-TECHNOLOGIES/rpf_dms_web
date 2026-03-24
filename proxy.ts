@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
-const PUBLIC_ROUTES = ["/login"];
+const PUBLIC_ROUTES = ["/api/trainschedule/get", "/api/debrief/get"];
 const AUTH_API_ROUTES = ["/api/auth/login", "/api/auth/refresh"];
 
 export async function proxy(req: NextRequest) {
@@ -40,7 +40,9 @@ export async function proxy(req: NextRequest) {
   }
 
   // 4. Protected routes — verify tokens
-  const accessToken = req.cookies.get("accessToken")?.value;
+  const accessToken =
+    req.cookies.get("accessToken")?.value ??
+    req.headers.get("authorization")?.replace("Bearer ", "");
   const refreshToken = req.cookies.get("refreshToken")?.value;
 
   if (!accessToken && !refreshToken) {
