@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
-const PUBLIC_ROUTES = ["/api/trainschedule/get", "/api/debrief/get"];
+const PUBLIC_ROUTES = ["/login"];
+const OPTIONAL_AUTH_ROUTES = ["/api/trainschedule/get", "/api/debrief/get"];
 const AUTH_API_ROUTES = ["/api/auth/login", "/api/auth/refresh"];
 
 export async function proxy(req: NextRequest) {
@@ -17,7 +18,11 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // 3. Public routes — redirect to dashboard if already logged in
+  // 2b. Optional auth routes — always allow, route handles its own auth
+  if (OPTIONAL_AUTH_ROUTES.some((r) => pathname.startsWith(r))) {
+    return NextResponse.next();
+  }
+
   // 3. Public routes — redirect to dashboard if already logged in
   if (PUBLIC_ROUTES.includes(pathname)) {
     const accessToken = req.cookies.get("accessToken")?.value;
@@ -35,7 +40,7 @@ export async function proxy(req: NextRequest) {
       } catch {}
     }
 
-    // No valid access token — just show login page regardless of refreshToken
+    // No valid access token — show login page
     return NextResponse.next();
   }
 
@@ -88,6 +93,13 @@ export async function proxy(req: NextRequest) {
         });
         return response;
       }
+
+      // Refresh failed — clear cookies and redirect to login
+      const loginUrl = new URL("/login", req.url);
+      const redirectRes = NextResponse.redirect(loginUrl);
+      redirectRes.cookies.delete("accessToken");
+      redirectRes.cookies.delete("refreshToken");
+      return redirectRes;
     } catch {}
   }
 
