@@ -7,6 +7,7 @@ import DebriefModel from "@/models/Debrief.model";
 import ThreatCalendar from "@/models/ThreatCalendar.model";
 import TrainSchedule from "@/models/TrainSchedule";
 import TrainCrimeIntelligence from "@/models/TrainCrimeIntelligence";
+import "@/models/Briefing.model";
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
