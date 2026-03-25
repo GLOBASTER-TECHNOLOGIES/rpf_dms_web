@@ -6,7 +6,7 @@ import connectDB from "@/config/dbConnect";
 
 const generateAccessToken = (id: string, role: string) => {
   return jwt.sign({ id, role }, process.env.JWT_ACCESS_SECRET as string, {
-    expiresIn: "15m",
+    expiresIn: "8h",
   });
 };
 
@@ -26,7 +26,10 @@ export async function POST(req: NextRequest) {
 
     let decoded: any;
     try {
-      decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET as string);
+      decoded = jwt.verify(
+        refreshToken,
+        process.env.JWT_REFRESH_SECRET as string,
+      );
     } catch {
       // Token expired or malformed — clear cookies and force re-login
       return clearAndUnauthorize("Refresh token expired or invalid");
@@ -51,13 +54,17 @@ export async function POST(req: NextRequest) {
       } else {
         await Post.findByIdAndUpdate(decoded.id, { refreshToken: null });
       }
-      return clearAndUnauthorize("Session conflict detected. Please log in again.");
+      return clearAndUnauthorize(
+        "Session conflict detected. Please log in again.",
+      );
     }
 
-    const newAccessToken = generateAccessToken(user._id.toString(), decoded.role);
+    const newAccessToken = generateAccessToken(
+      user._id.toString(),
+      decoded.role,
+    );
 
     return NextResponse.json({ accessToken: newAccessToken }, { status: 200 });
-
   } catch (error) {
     console.error("Refresh error:", error);
     return clearAndUnauthorize("Server error");
