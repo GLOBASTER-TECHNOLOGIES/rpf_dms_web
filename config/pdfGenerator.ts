@@ -21,10 +21,6 @@ const loadImage = (url: string): Promise<HTMLImageElement> => {
   });
 };
 
-/**
- * Dynamically fetches a .ttf font file and converts it to Base64
- * so jsPDF can embed it for multi-language (Unicode) support.
- */
 const loadFontAsBase64 = async (url: string): Promise<string> => {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Failed to fetch font at ${url}`);
@@ -42,14 +38,24 @@ const loadFontAsBase64 = async (url: string): Promise<string> => {
   });
 };
 
-// Notice: Added fontName parameter here so headers use the correct language font
-function sectionHeader(
-  doc: jsPDF,
-  text: string,
-  y: number,
-  fontName: string,
-): number {
-  doc.setFont(fontName, "bold");
+/**
+ * Detects the script of the text and returns the corresponding font name.
+ * Falls back to helvetica for standard English text.
+ */
+const detectFont = (text: string): string => {
+  if (!text) return "helvetica";
+  // Tamil Unicode Range
+  if (/[\u0B80-\u0BFF]/.test(text)) return "NotoSansTamil";
+  // Malayalam Unicode Range
+  if (/[\u0D00-\u0D7F]/.test(text)) return "NotoSansMalayalam";
+  // Devanagari (Hindi) Unicode Range
+  if (/[\u0900-\u097F]/.test(text)) return "NotoSansDevanagari";
+
+  return "helvetica";
+};
+
+function sectionHeader(doc: jsPDF, text: string, y: number): number {
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(...SLATE_900);
   doc.text(text.toUpperCase(), 14, y + 6);
@@ -78,23 +84,23 @@ export const generateShiftPDF = async (data: any) => {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
-  // Define font tracking
-  const CUSTOM_FONT = "CustomUnicodeFont";
-  const FALLBACK_FONT = "helvetica";
-  let activeFont = FALLBACK_FONT;
+  // ── 0. LOAD REGIONAL FONTS ──────────────────────────────────────────────────
+  const fontsToLoad = [
+    { url: "/NotoSansDevanagari-Regular.ttf", name: "NotoSansDevanagari" },
+    { url: "/NotoSansMalayalam-Regular.ttf", name: "NotoSansMalayalam" },
+    { url: "/NotoSansTamil-Regular.ttf", name: "NotoSansTamil" },
+  ];
 
-  // ── 0. LOAD MULTI-LANGUAGE FONT ────────────────────────────────────────────
-  try {
-    // Make sure this matches the exact filename in your public folder!
-    const fontBase64 = await loadFontAsBase64("/Arial Unicode MS.ttf");
-
-    doc.addFileToVFS("ArialUnicode.otf", fontBase64);
-    doc.addFont("ArialUnicode.otf", CUSTOM_FONT, "normal");
-    doc.addFont("ArialUnicode.otf", CUSTOM_FONT, "bold");
-
-    activeFont = CUSTOM_FONT;
-  } catch (err) {
-    console.warn("Unicode font failed to load. Falling back to default.", err);
+  for (const font of fontsToLoad) {
+    try {
+      const fontBase64 = await loadFontAsBase64(font.url);
+      doc.addFileToVFS(`${font.name}.ttf`, fontBase64);
+      doc.addFont(`${font.name}.ttf`, font.name, "normal");
+      doc.addFont(`${font.name}.ttf`, font.name, "bold");
+      doc.addFont(`${font.name}.ttf`, font.name, "italic");
+    } catch (err) {
+      console.warn(`Failed to load ${font.name}.`, err);
+    }
   }
 
   const timestamp = new Date().toLocaleString("en-IN", {
@@ -108,16 +114,16 @@ export const generateShiftPDF = async (data: any) => {
     const logo = await loadImage("/rpf_logo.png");
     doc.addImage(logo, "PNG", 14, 10, 24, 24);
   } catch {
-    console.warn("Logo could not be loaded. Continuing without logo.");
+    console.warn("Logo could not be loaded.");
   }
 
   doc.setTextColor(...SLATE_900);
-  doc.setFont(activeFont, "bold"); // Replaced "helvetica" with activeFont
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.text("RAILWAY PROTECTION FORCE", 42, 16);
 
   doc.setFontSize(9.5);
-  doc.setFont(activeFont, "normal");
+  doc.setFont("helvetica", "normal");
   doc.setTextColor(...SLATE_600);
   doc.text(
     "Intelligence & Duty Reporting System • Tiruchchirappalli Division",
@@ -125,12 +131,12 @@ export const generateShiftPDF = async (data: any) => {
     22,
   );
 
-  doc.setFont(activeFont, "bold");
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(...SLATE_900);
   doc.text("SHIFT OPERATIONS REPORT", 42, 30);
 
-  doc.setFont(activeFont, "italic");
+  doc.setFont("helvetica", "italic");
   doc.setFontSize(9);
   doc.setTextColor(...SLATE_600);
   doc.text(`Generated: ${timestamp}`, pageWidth - 14, 30, { align: "right" });
@@ -139,6 +145,16 @@ export const generateShiftPDF = async (data: any) => {
   doc.line(14, 38, pageWidth - 14, 38);
 
   let y = 44;
+
+  // Smart Cell Font hook: Checks the language of each cell and assigns the correct font
+  const applyFontToCell = (data: any) => {
+    if (data.cell.text && data.cell.text.length > 0) {
+      const cellText = Array.isArray(data.cell.text)
+        ? data.cell.text.join(" ")
+        : data.cell.text;
+      data.cell.styles.font = detectFont(cellText);
+    }
+  };
 
   // ── 2. METADATA ROW ────────────────────────────────────────────────────────
   autoTable(doc, {
@@ -153,7 +169,7 @@ export const generateShiftPDF = async (data: any) => {
       ],
     ],
     theme: "grid",
-    styles: { font: activeFont }, // Inject font into table
+    didParseCell: applyFontToCell,
     headStyles: {
       fillColor: SLATE_100,
       textColor: SLATE_600,
@@ -176,24 +192,24 @@ export const generateShiftPDF = async (data: any) => {
 
   // ── 3. SO'S BRIEFING ──────────────────────────────────────────────────────
   y = checkPageBreak(doc, y, 40);
-  y = sectionHeader(doc, "1. SO's Briefing Script", y, activeFont);
+  y = sectionHeader(doc, "1. SO's Briefing Script", y);
 
   const script =
     data.briefingDocument?.briefingScript ||
     "No briefing script recorded for this shift.";
 
-  doc.setFont(activeFont, "italic");
+  doc.setFont(detectFont(script), "italic");
   doc.setFontSize(10);
   doc.setTextColor(...SLATE_800);
 
-  const splitScript = doc.splitTextToSize(`"${script}"`, pageWidth - 28);
+  const splitScript = doc.splitTextToSize(`${script}`, pageWidth - 28);
   doc.text(splitScript, 14, y);
 
   y += splitScript.length * 5 + 10;
 
   // ── 4. DEPLOYED PERSONNEL ─────────────────────────────────────────────────
   y = checkPageBreak(doc, y, 40);
-  y = sectionHeader(doc, "2. Deployed Personnel", y, activeFont);
+  y = sectionHeader(doc, "2. Deployed Personnel", y);
 
   if (data.officers && data.officers.length > 0) {
     autoTable(doc, {
@@ -207,7 +223,7 @@ export const generateShiftPDF = async (data: any) => {
         o.postCode || data.post || "—",
       ]),
       theme: "plain",
-      styles: { font: activeFont }, // Inject font into table
+      didParseCell: applyFontToCell,
       headStyles: {
         fillColor: SLATE_900,
         textColor: WHITE,
@@ -225,7 +241,7 @@ export const generateShiftPDF = async (data: any) => {
     });
     y = (doc as any).lastAutoTable.finalY + 12;
   } else {
-    doc.setFont(activeFont, "italic");
+    doc.setFont("helvetica", "italic");
     doc.setFontSize(9);
     doc.text("No personnel deployed.", 14, y);
     y += 12;
@@ -233,7 +249,20 @@ export const generateShiftPDF = async (data: any) => {
 
   // ── 5. DUTY INSTRUCTIONS ──────────────────────────────────────────────────
   y = checkPageBreak(doc, y, 40);
-  y = sectionHeader(doc, "3. Standard Duty Instructions", y, activeFont);
+
+  // Professional Section Header
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11); // ✅ Section Title = 11
+  doc.setTextColor(20, 30, 45);
+  const sectionTitle = "3. STANDARD DUTY INSTRUCTIONS";
+  doc.text(sectionTitle, 14, y);
+
+  // Precise Underline
+  const titleWidth = doc.getTextWidth(sectionTitle);
+  doc.setDrawColor(79, 70, 229);
+  doc.setLineWidth(0.6);
+  doc.line(14, y + 1.5, 14 + titleWidth, y + 1.5);
+  y += 8;
 
   if (data.instructions && data.instructions.length > 0) {
     autoTable(doc, {
@@ -246,30 +275,65 @@ export const generateShiftPDF = async (data: any) => {
         const to = ins.validTo
           ? new Date(ins.validTo).toLocaleDateString("en-IN")
           : "—";
-        return [ins.title || "—", ins.instruction || "—", `${from} to ${to}`];
+
+        const validity = `${from}\nto\n${to}`;
+
+        // spacing fix (unchanged)
+        const formattedInstructions = ins.instruction
+          ? ins.instruction
+              .replace(/\s*(\d+\))/g, "\n$1")
+              .replace(/(\d+\)[^\n]*)/g, "$1\n")
+              .trim()
+          : "—";
+
+        return [
+          {
+            content: ins.title?.toUpperCase() || "—",
+            styles: { fontStyle: "bold" },
+          },
+          formattedInstructions,
+          validity,
+        ];
       }),
       theme: "grid",
-      styles: { font: activeFont, overflow: "linebreak", cellPadding: 4 }, // Inject font into table
-      headStyles: { fillColor: SLATE_900, textColor: WHITE, fontSize: 8.5 },
-      bodyStyles: { fontSize: 9.5, textColor: SLATE_800, valign: "top" },
+      styles: {
+        overflow: "linebreak",
+        cellPadding: 5,
+        lineColor: [220, 220, 220],
+        lineWidth: 0.1,
+      },
+      headStyles: {
+        fillColor: [30, 41, 59],
+        textColor: 255,
+        fontSize: 8.5, // ✅ Header = 8.5
+      },
+      bodyStyles: {
+        fontSize: 9, // ✅ Table Body = 9
+        textColor: [51, 65, 85],
+        valign: "top",
+      },
       columnStyles: {
-        0: { cellWidth: 35, fontStyle: "bold", textColor: SLATE_900 },
-        1: { cellWidth: "auto" },
-        2: { cellWidth: 42 },
+        0: { cellWidth: 35, fillColor: [250, 251, 252] },
+        1: {
+          cellWidth: "auto",
+          cellPadding: { top: 5, right: 8, bottom: 5, left: 5 },
+        },
+        2: { cellWidth: 28, halign: "center" },
       },
       margin: { left: 14, right: 14 },
+      rowPageBreak: "auto",
     });
     y = (doc as any).lastAutoTable.finalY + 12;
   } else {
-    doc.setFont(activeFont, "italic");
+    doc.setFont("helvetica", "italic");
     doc.setFontSize(9);
     doc.text("No instructions recorded.", 14, y);
-    y += 12;
+    y += 10;
   }
-
+  
   // ── 6. CRIME INTELLIGENCE ─────────────────────────────────────────────────
   y = checkPageBreak(doc, y, 40);
-  y = sectionHeader(doc, "4. Risk Analysis & Intelligence", y, activeFont);
+  y = sectionHeader(doc, "4. Risk Analysis & Intelligence", y);
 
   if (data.crimeIntel && data.crimeIntel.length > 0) {
     autoTable(doc, {
@@ -281,7 +345,8 @@ export const generateShiftPDF = async (data: any) => {
         c.primaryDutyAction || "—",
       ]),
       theme: "grid",
-      styles: { font: activeFont, overflow: "linebreak", cellPadding: 4 }, // Inject font into table
+      styles: { overflow: "linebreak", cellPadding: 4 },
+      didParseCell: applyFontToCell,
       headStyles: { fillColor: INDIGO_600, textColor: WHITE, fontSize: 8.5 },
       bodyStyles: { fontSize: 9.5, textColor: SLATE_800, valign: "top" },
       columnStyles: {
@@ -293,98 +358,207 @@ export const generateShiftPDF = async (data: any) => {
     });
     y = (doc as any).lastAutoTable.finalY + 12;
   } else {
-    doc.setFont(activeFont, "italic");
+    doc.setFont("helvetica", "italic");
     doc.setFontSize(9);
     doc.text("No intelligence data recorded.", 14, y);
     y += 12;
   }
 
-  // ── 7. POST-SHIFT DEBRIEFS ────────────────────────────────────────────────
+  // ── 7. POST-SHIFT DEBRIEFS (COMPACT HEIGHT LAYOUT) ──────────────────────────
   y = checkPageBreak(doc, y, 35);
-  y = sectionHeader(doc, "5. Officer Post-Shift Debriefs", y, activeFont);
+  y = sectionHeader(doc, "5. Officer Post-Shift Debriefs", y);
 
   if (data.debriefs && data.debriefs.length > 0) {
     data.debriefs.forEach((d: any) => {
       y = checkPageBreak(doc, y, 40);
 
+      // Officer Header Block
       doc.setFillColor(...SLATE_100);
       doc.rect(14, y, pageWidth - 28, 8, "F");
-      doc.setFont(activeFont, "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(...SLATE_800);
 
       const officerName = (d.staffId?.name || "Unknown").toUpperCase();
       const officerRank = (d.staffId?.rank || "Rank N/A").toUpperCase();
       const officerId = d.staffId?.forceNumber || "ID N/A";
+      const headerStr = `OFFICER: ${officerName}  |  ${officerRank}  |  ID: ${officerId}`;
 
-      doc.text(
-        `OFFICER: ${officerName}  |  ${officerRank}  |  ID: ${officerId}`,
-        16,
-        y + 5.5,
-      );
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(...SLATE_800);
+      doc.text(headerStr, 16, y + 5.5);
       y += 10;
 
       if (d.reports && d.reports.length > 0) {
+        const bodyRows: any[] = [];
+
+        d.reports.forEach((r: any) => {
+          const time = r.submittedAt
+            ? new Date(r.submittedAt).toLocaleTimeString("en-IN", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "—";
+          const trainStr =
+            r.trainNo || r.trainNumber
+              ? `TRAIN ${r.trainNo || r.trainNumber}   •   ${time}`
+              : time;
+          const finalSummary =
+            r.summary || (r.transcript && !r.summary ? r.observations : null);
+
+          // ROW 1: Train Header
+          bodyRows.push([
+            {
+              content: trainStr,
+              colSpan: 2,
+              styles: {
+                fillColor: [241, 245, 249],
+                textColor: [15, 23, 42],
+                fontStyle: "bold",
+                fontSize: 9.5,
+                halign: "left",
+                valign: "middle",
+                cellPadding: { top: 3, bottom: 2, left: 14, right: 14 },
+              },
+            },
+          ]);
+
+          // ROW 2: Transcript & Summary LABELS (REDUCED HEIGHT)
+          bodyRows.push([
+            {
+              content: "TRANSCRIPT",
+              styles: {
+                font: "helvetica",
+                fontStyle: "bold",
+                fontSize: 7.5,
+                textColor: [100, 116, 139],
+                halign: "left",
+                valign: "middle",
+                // Tighter top and bottom padding reduces cell height
+                cellPadding: { top: 4, bottom: 3, left: 14, right: 14 },
+              },
+            },
+            {
+              content: "SUMMARY",
+              styles: {
+                font: "helvetica",
+                fontStyle: "bold",
+                fontSize: 7.5,
+                textColor: [100, 116, 139],
+                halign: "left",
+                valign: "middle",
+                cellPadding: { top: 4, bottom: 3, left: 14, right: 14 },
+              },
+            },
+          ]);
+
+          // ROW 3: Transcript & Summary DATA
+          bodyRows.push([
+            {
+              content: r.transcript ? r.transcript.trim() : "—",
+              styles: {
+                font: detectFont(r.transcript),
+                textColor: [30, 41, 59],
+                fontSize: 9,
+                halign: "left",
+                valign: "middle",
+                cellPadding: { top: 2, bottom: 5, left: 14, right: 14 },
+              },
+            },
+            {
+              content: finalSummary ? finalSummary.trim() : "—",
+              styles: {
+                font: "helvetica",
+                textColor: [30, 41, 59],
+                fontSize: 9,
+                halign: "left",
+                valign: "middle",
+                cellPadding: { top: 2, bottom: 5, left: 14, right: 14 },
+              },
+            },
+          ]);
+
+          // ROW 4: Observations & Improvements LABELS (REDUCED HEIGHT)
+          bodyRows.push([
+            {
+              content: "OBSERVATIONS",
+              styles: {
+                font: "helvetica",
+                fontStyle: "bold",
+                fontSize: 7.5,
+                textColor: [100, 116, 139],
+                halign: "left",
+                valign: "middle",
+                cellPadding: { top: 4, bottom: 3, left: 14, right: 14 },
+              },
+            },
+            {
+              content: "IMPROVEMENTS",
+              styles: {
+                font: "helvetica",
+                fontStyle: "bold",
+                fontSize: 7.5,
+                textColor: [100, 116, 139],
+                halign: "left",
+                valign: "middle",
+                cellPadding: { top: 4, bottom: 3, left: 14, right: 14 },
+              },
+            },
+          ]);
+
+          // ROW 5: Observations & Improvements DATA
+          bodyRows.push([
+            {
+              content: r.observations || "—",
+              styles: {
+                font: "helvetica",
+                textColor: [30, 41, 59],
+                fontSize: 9,
+                halign: "left",
+                valign: "middle",
+                cellPadding: { top: 2, bottom: 5, left: 14, right: 14 },
+              },
+            },
+            {
+              content: r.improvements || "—",
+              styles: {
+                font: "helvetica",
+                textColor: [30, 41, 59],
+                fontSize: 9,
+                halign: "left",
+                valign: "middle",
+                cellPadding: { top: 2, bottom: 5, left: 14, right: 14 },
+              },
+            },
+          ]);
+        });
+
+        const halfWidth = (pageWidth - 28) / 2;
+
         autoTable(doc, {
           startY: y,
-          head: [
-            [
-              "TRAIN / TIME",
-              "SUMMARY / TRANSCRIPT",
-              "OBSERVATIONS",
-              "IMPROVEMENTS",
-            ],
-          ],
-          body: d.reports.map((r: any) => {
-            const time = r.submittedAt
-              ? new Date(r.submittedAt).toLocaleTimeString("en-IN", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : "—";
-            const trainStr =
-              r.trainNo || r.trainNumber
-                ? `Train ${r.trainNo || r.trainNumber}\n${time}`
-                : time;
-
-            let textContent = "";
-            if (r.transcript) textContent += `TRANSCRIPT:\n${r.transcript}\n\n`;
-            if (r.summary) textContent += `SUMMARY:\n${r.summary}`;
-
-            return [
-              trainStr,
-              textContent.trim() || "—",
-              r.observations || "—",
-              r.improvements || "—",
-            ];
-          }),
+          body: bodyRows,
           theme: "grid",
-          styles: { font: activeFont, overflow: "linebreak", cellPadding: 4 }, // Inject font into table
-          headStyles: {
-            fillColor: BORDER_COLOR,
-            textColor: SLATE_900,
-            fontSize: 8,
-            fontStyle: "bold",
+          styles: {
+            overflow: "linebreak",
+            lineColor: BORDER_COLOR,
+            lineWidth: 0.1,
           },
-          bodyStyles: { fontSize: 9, textColor: SLATE_600, valign: "top" },
           columnStyles: {
-            0: { cellWidth: 28, fontStyle: "bold", textColor: SLATE_800 },
-            1: { cellWidth: "auto" },
-            2: { cellWidth: 40 },
-            3: { cellWidth: 40 },
+            0: { cellWidth: halfWidth },
+            1: { cellWidth: halfWidth },
           },
           margin: { left: 14, right: 14 },
         });
-        y = (doc as any).lastAutoTable.finalY + 8;
+
+        y = (doc as any).lastAutoTable.finalY + 12;
       } else {
-        doc.setFont(activeFont, "italic");
+        doc.setFont("helvetica", "italic");
         doc.setFontSize(9);
         doc.text("No reports submitted by this officer.", 14, y);
         y += 12;
       }
     });
   } else {
-    doc.setFont(activeFont, "italic");
+    doc.setFont("helvetica", "italic");
     doc.setFontSize(9);
     doc.text("No debriefs recorded.", 14, y);
     y += 12;
@@ -399,22 +573,22 @@ export const generateShiftPDF = async (data: any) => {
 
   // Duty Officer
   doc.line(14, y, 70, y);
-  doc.setFont(activeFont, "bold");
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(...SLATE_800);
   doc.text("Duty Officer Signature", 14, y + 5);
-  doc.setFont(activeFont, "normal");
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(...SLATE_600);
   doc.text("Name / Rank / Date", 14, y + 9);
 
   // Post In-charge
   doc.line(pageWidth - 70, y, pageWidth - 14, y);
-  doc.setFont(activeFont, "bold");
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(...SLATE_800);
   doc.text("Post In-charge (IPF)", pageWidth - 70, y + 5);
-  doc.setFont(activeFont, "normal");
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(...SLATE_600);
   doc.text("Name / Rank / Date", pageWidth - 70, y + 9);
@@ -428,6 +602,7 @@ export const generateShiftPDF = async (data: any) => {
 
     doc.setFontSize(8);
     doc.setTextColor(...SLATE_600);
+    doc.setFont("helvetica", "normal");
     doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 6, {
       align: "center",
     });
@@ -437,5 +612,5 @@ export const generateShiftPDF = async (data: any) => {
   // Save the document
   const safePost = (data.post || "UNKNOWN").replace(/\s+/g, "");
   const safeShift = (data.shiftName || "SHIFT").replace(/\s+/g, "");
-  doc.save(`ShiftReport_${safePost}_${safeShift}.pdf`);
+  doc.save(`${data.shiftDate}_${safePost}_${safeShift}.pdf`);
 };
