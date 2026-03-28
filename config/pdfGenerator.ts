@@ -38,10 +38,6 @@ const loadFontAsBase64 = async (url: string): Promise<string> => {
   });
 };
 
-/**
- * Detects the script of the text and returns the corresponding font name.
- * Falls back to helvetica for standard English text.
- */
 const detectFont = (text: string): string => {
   if (!text) return "helvetica";
   // Tamil Unicode Range
@@ -54,15 +50,19 @@ const detectFont = (text: string): string => {
   return "helvetica";
 };
 
+// Precise 0.6 thickness underline everywhere
 function sectionHeader(doc: jsPDF, text: string, y: number): number {
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.setTextColor(...SLATE_900);
-  doc.text(text.toUpperCase(), 14, y + 6);
+  const sectionTitle = text.toUpperCase();
+  doc.text(sectionTitle, 14, y + 6);
 
-  const textWidth = doc.getTextWidth(text.toUpperCase());
-  doc.setFillColor(...INDIGO_600);
-  doc.rect(14, y + 8.5, textWidth, 1.5, "F");
+  // Precise Underline
+  const titleWidth = doc.getTextWidth(sectionTitle);
+  doc.setDrawColor(...INDIGO_600); // 79, 70, 229
+  doc.setLineWidth(0.6);
+  doc.line(14, y + 7.5, 14 + titleWidth, y + 7.5);
 
   return y + 14;
 }
@@ -190,7 +190,7 @@ export const generateShiftPDF = async (data: any) => {
 
   y = (doc as any).lastAutoTable.finalY + 12;
 
-  // ── 3. SO'S BRIEFING ──────────────────────────────────────────────────────
+  // ── 3. SO'S BRIEFING (✨ IMPROVED PARSER & STYLING) ────────────────────────
   y = checkPageBreak(doc, y, 40);
   y = sectionHeader(doc, "1. SO's Briefing Script", y);
 
@@ -198,14 +198,109 @@ export const generateShiftPDF = async (data: any) => {
     data.briefingDocument?.briefingScript ||
     "No briefing script recorded for this shift.";
 
-  doc.setFont(detectFont(script), "italic");
-  doc.setFontSize(10);
-  doc.setTextColor(...SLATE_800);
+  // Smart parsing: Add newlines before numbered list items if they are bunched up on the same line
+  const cleanScript = script
+    .replace(/([^\n])(\s*\b\d+[\)\.]\s)/g, "$1\n$2")
+    .trim();
 
-  const splitScript = doc.splitTextToSize(`${script}`, pageWidth - 28);
-  doc.text(splitScript, 14, y);
+  // Split into individual points based on the numbered markers
+  const rawPoints = cleanScript
+    .split(/(?=(?:^|\n)\s*\d+[\)\.]\s)/g)
+    .map((p: string) => p.trim())
+    .filter(Boolean);
+  const scriptPoints: { title: string; body: string }[] = [];
 
-  y += splitScript.length * 5 + 10;
+  // Check if the text actually utilizes a numbered list format
+  const isNumberedList =
+    rawPoints.length > 0 && /^\d+[\)\.]/.test(rawPoints[0]);
+
+  if (isNumberedList) {
+    rawPoints.forEach((pt: string) => {
+      const newlineIdx = pt.indexOf("\n");
+      if (newlineIdx !== -1) {
+        // Point has a natural line break. Treat first line as title.
+        scriptPoints.push({
+          title: pt.substring(0, newlineIdx).trim(),
+          body: pt.substring(newlineIdx + 1).trim(),
+        });
+      } else {
+        // Inline point without line breaks. Try to detect a title separated by colon or dash.
+        const match = pt.match(/^(\d+[\)\.]\s*[^a-z\n]+?)(?:--|:|-)(.*)$/);
+        if (match && match[1].length > 3) {
+          scriptPoints.push({ title: match[1].trim(), body: match[2].trim() });
+        } else {
+          scriptPoints.push({ title: "", body: pt });
+        }
+      }
+    });
+  } else {
+    // Not a numbered list, simply split into paragraphs
+    cleanScript
+      .split(/\n+/)
+      .filter(Boolean)
+      .forEach((b: string) => scriptPoints.push({ title: "", body: b }));
+  }
+
+  const briefingRows: any[] = [];
+
+  // Construct autoTable rows for the Briefing Script
+  scriptPoints.forEach((sp) => {
+    if (sp.title) {
+      briefingRows.push([
+        {
+          content: sp.title,
+          styles: {
+            fillColor: SLATE_100, // Light slate background for titles
+            textColor: SLATE_900,
+            fontStyle: "bold",
+            fontSize: 9.5,
+            cellPadding: { top: 4, bottom: 4, left: 10, right: 10 },
+          },
+        },
+      ]);
+    }
+    if (sp.body) {
+      briefingRows.push([
+        {
+          content: sp.body,
+          styles: {
+            fillColor: WHITE,
+            textColor: SLATE_800,
+            fontStyle: "normal", // No more dense italics
+            fontSize: 9.5,
+            lineHeightFactor: 1.5, // Much better line height for readability
+            // Link spacing: less top padding if it follows a title, more bottom padding to separate points
+            cellPadding: {
+              top: sp.title ? 2 : 5,
+              bottom: 8,
+              left: 10,
+              right: 10,
+            },
+          },
+        },
+      ]);
+    }
+  });
+
+  if (briefingRows.length > 0) {
+    autoTable(doc, {
+      startY: y,
+      body: briefingRows,
+      theme: "plain", // No borders, relies on padding and background shades
+      styles: {
+        overflow: "linebreak",
+      },
+      margin: { left: 14, right: 14 },
+      didParseCell: applyFontToCell,
+    });
+    y = (doc as any).lastAutoTable.finalY + 12;
+  } else {
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(9);
+    doc.setTextColor(...SLATE_600);
+    doc.text("No briefing script recorded.", 14, y);
+    y += 12;
+  }
 
   // ── 4. DEPLOYED PERSONNEL ─────────────────────────────────────────────────
   y = checkPageBreak(doc, y, 40);
@@ -249,20 +344,7 @@ export const generateShiftPDF = async (data: any) => {
 
   // ── 5. DUTY INSTRUCTIONS ──────────────────────────────────────────────────
   y = checkPageBreak(doc, y, 40);
-
-  // Professional Section Header
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11); // ✅ Section Title = 11
-  doc.setTextColor(20, 30, 45);
-  const sectionTitle = "3. STANDARD DUTY INSTRUCTIONS";
-  doc.text(sectionTitle, 14, y);
-
-  // Precise Underline
-  const titleWidth = doc.getTextWidth(sectionTitle);
-  doc.setDrawColor(79, 70, 229);
-  doc.setLineWidth(0.6);
-  doc.line(14, y + 1.5, 14 + titleWidth, y + 1.5);
-  y += 8;
+  y = sectionHeader(doc, "3. STANDARD DUTY INSTRUCTIONS", y);
 
   if (data.instructions && data.instructions.length > 0) {
     autoTable(doc, {
@@ -278,7 +360,6 @@ export const generateShiftPDF = async (data: any) => {
 
         const validity = `${from}\nto\n${to}`;
 
-        // spacing fix (unchanged)
         const formattedInstructions = ins.instruction
           ? ins.instruction
               .replace(/\s*(\d+\))/g, "\n$1")
@@ -305,10 +386,10 @@ export const generateShiftPDF = async (data: any) => {
       headStyles: {
         fillColor: [30, 41, 59],
         textColor: 255,
-        fontSize: 8.5, // ✅ Header = 8.5
+        fontSize: 8.5,
       },
       bodyStyles: {
-        fontSize: 9, // ✅ Table Body = 9
+        fontSize: 9,
         textColor: [51, 65, 85],
         valign: "top",
       },
@@ -330,7 +411,7 @@ export const generateShiftPDF = async (data: any) => {
     doc.text("No instructions recorded.", 14, y);
     y += 10;
   }
-  
+
   // ── 6. CRIME INTELLIGENCE ─────────────────────────────────────────────────
   y = checkPageBreak(doc, y, 40);
   y = sectionHeader(doc, "4. Risk Analysis & Intelligence", y);
@@ -364,7 +445,7 @@ export const generateShiftPDF = async (data: any) => {
     y += 12;
   }
 
-  // ── 7. POST-SHIFT DEBRIEFS (COMPACT HEIGHT LAYOUT) ──────────────────────────
+  // ── 7. POST-SHIFT DEBRIEFS ────────────────────────────────────────────────
   y = checkPageBreak(doc, y, 35);
   y = sectionHeader(doc, "5. Officer Post-Shift Debriefs", y);
 
@@ -421,7 +502,7 @@ export const generateShiftPDF = async (data: any) => {
             },
           ]);
 
-          // ROW 2: Transcript & Summary LABELS (REDUCED HEIGHT)
+          // ROW 2: Transcript & Summary LABELS
           bodyRows.push([
             {
               content: "TRANSCRIPT",
@@ -432,7 +513,6 @@ export const generateShiftPDF = async (data: any) => {
                 textColor: [100, 116, 139],
                 halign: "left",
                 valign: "middle",
-                // Tighter top and bottom padding reduces cell height
                 cellPadding: { top: 4, bottom: 3, left: 14, right: 14 },
               },
             },
@@ -476,7 +556,7 @@ export const generateShiftPDF = async (data: any) => {
             },
           ]);
 
-          // ROW 4: Observations & Improvements LABELS (REDUCED HEIGHT)
+          // ROW 4: Observations & Improvements LABELS
           bodyRows.push([
             {
               content: "OBSERVATIONS",
