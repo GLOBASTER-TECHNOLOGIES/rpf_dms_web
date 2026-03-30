@@ -11,7 +11,6 @@ export async function GET() {
     if (!config) {
       config = await AppConfig.create({
         latestVersion: "1.0.0",
-        minSupportedVersion: "1.0.0",
         forceUpdate: false,
       });
     }
