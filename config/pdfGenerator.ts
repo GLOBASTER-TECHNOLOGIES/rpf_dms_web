@@ -159,7 +159,7 @@ export const generateShiftPDF = async (data: any) => {
   // ── 2. METADATA ROW ────────────────────────────────────────────────────────
   autoTable(doc, {
     startY: y,
-    head: [["SHIFT DATE", "SHIFT TYPE", "POST / LOCATION", "TOTAL PERSONNEL"]],
+    head: [["SHIFT DATE", "SHIFT TYPE", "POST", "TOTAL PERSONNEL"]],
     body: [
       [
         data.shiftDate || "—",
