@@ -6,13 +6,18 @@ export async function GET() {
   try {
     await dbConnect();
 
-    let config = await AppConfig.findOne();
+    const config = await AppConfig.findOne();
 
     if (!config) {
-      config = await AppConfig.create({
-        latestVersion: "1.0.0",
-        forceUpdate: false,
-      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "APP_FROZEN",
+          message:
+            "The app is temporarily unavailable. Please contact support or try again later.",
+        },
+        { status: 503 }, // Service Unavailable 🔥
+      );
     }
 
     return NextResponse.json({
@@ -21,7 +26,10 @@ export async function GET() {
     });
   } catch (error) {
     return NextResponse.json(
-      { success: false, message: "Failed to fetch config" },
+      {
+        success: false,
+        message: "Failed to fetch config",
+      },
       { status: 500 },
     );
   }
