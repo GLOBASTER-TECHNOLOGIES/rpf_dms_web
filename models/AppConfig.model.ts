@@ -1,10 +1,7 @@
-// models/appConfig.model.ts
-
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IAppConfig extends Document {
   latestVersion: string;
-  minSupportedVersion: string;
   forceUpdate: boolean;
   updateUrl?: string;
   createdAt: Date;
@@ -17,6 +14,7 @@ const AppConfigSchema: Schema<IAppConfig> = new Schema(
       type: String,
       required: true,
       default: "1.0.0",
+    },
     forceUpdate: {
       type: Boolean,
       default: false,
@@ -28,7 +26,7 @@ const AppConfigSchema: Schema<IAppConfig> = new Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Ensure single document (optional but recommended)
