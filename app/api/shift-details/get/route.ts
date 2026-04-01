@@ -27,7 +27,9 @@ export async function GET(req: NextRequest) {
       post: post.toUpperCase(),
       shiftName: shiftName,
       shiftDate: { $gte: dayStart, $lte: dayEnd },
-    }).select("_id shiftName shiftDate post officers");
+    })
+      .populate("officers", "name forceNumber") // 🔥 ADD THIS LINE: This fetches the actual officer details
+      .select("_id shiftName shiftDate post officers");
 
     if (!shift) {
       return NextResponse.json({ success: true, exists: false, data: null });
