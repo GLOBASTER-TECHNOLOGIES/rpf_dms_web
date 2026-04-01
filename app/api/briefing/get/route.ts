@@ -15,7 +15,6 @@ export async function GET(req: Request) {
     const all = searchParams.get("all") === "true";
 
     // ─── 1. PRIORITY: GET BY ID ─────────────────────────────
-    // If a specific ID is asked for, return only that.
     if (id) {
       if (!mongoose.Types.ObjectId.isValid(id)) {
         return NextResponse.json(
@@ -33,12 +32,10 @@ export async function GET(req: Request) {
     }
 
     // ─── 2. DEFAULT BEHAVIOR: RETURN ALL (NO PARAMS) ────────
-    // If NO 'post' is provided, return every briefing in the DB.
-    // This covers your request: "if no query param is coming, return all".
     if (!post) {
       const globalBriefings = await Briefing.find({})
         .sort({ dutyDate: -1, createdAt: -1 })
-        .limit(200) // Performance safety net
+        .limit(200)
         .lean();
 
       return NextResponse.json({
@@ -50,7 +47,6 @@ export async function GET(req: Request) {
     }
 
     // ─── 3. FILTERED ARCHIVE: GET ALL FOR SPECIFIC POST ─────
-    // URL: /api/briefing/get?post=TPJ&all=true
     if (all) {
       const postHistory = await Briefing.find({ post })
         .sort({ dutyDate: -1, createdAt: -1 })
@@ -65,7 +61,6 @@ export async function GET(req: Request) {
     }
 
     // ─── 4. SPECIFIC LOGIC: POST + SHIFT (DUTY VIEW) ────────
-    // URL: /api/briefing/get?post=TPJ&shift=Morning
     if (!shift) {
       return NextResponse.json(
         {
@@ -76,47 +71,23 @@ export async function GET(req: Request) {
       );
     }
 
-    const now = new Date();
-    const startOfDay = new Date(now.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(now.setHours(23, 59, 59, 999));
-
-    // Try finding today's specific briefing
-    const todayBriefing = await Briefing.find({
-      post,
-      shift,
-      dutyDate: { $gte: startOfDay, $lte: endOfDay },
-    })
-      .sort({ createdAt: -1 })
+    // 🔥 NEW SIMPLIFIED LOGIC: Just grab the absolute latest entry
+    const latestBriefing = await Briefing.find({ post, shift })
+      .sort({ createdAt: -1 }) // Sort by newest first
+      .limit(1) // Only grab the top 1 result
       .lean();
 
-    if (todayBriefing.length > 0) {
+    if (latestBriefing.length > 0) {
       return NextResponse.json({
         success: true,
-        data: todayBriefing,
-        isFallback: false,
-      });
-    }
-
-    // FALLBACK: Last available briefing for this post if today's is missing
-    const fallbackBriefing = await Briefing.findOne({
-      post,
-      dutyDate: { $lt: startOfDay },
-    })
-      .sort({ dutyDate: -1 })
-      .lean();
-
-    if (fallbackBriefing) {
-      return NextResponse.json({
-        success: true,
-        data: [fallbackBriefing],
-        isFallback: true,
-        message: "No briefing for today. Showing previous available record.",
+        data: latestBriefing, // Returns an array with 1 item inside, so Flutter doesn't crash
+        isFallback: false, // Kept so your Flutter UI still works flawlessly
       });
     }
 
     return NextResponse.json({
       success: false,
-      message: "No briefings found for this post.",
+      message: "No briefings found for this post and shift.",
     });
   } catch (error) {
     console.error("Briefing GET Error:", error);
