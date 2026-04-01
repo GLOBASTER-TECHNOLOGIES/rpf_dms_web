@@ -2,28 +2,111 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
 const PUBLIC_ROUTES = ["/login"];
-const OPTIONAL_AUTH_ROUTES = ["/api/trainschedule/get", "/api/debrief/get"];
+const OPTIONAL_AUTH_ROUTES = [
+  // "/api/trainschedule/get",
+  // "/api/debrief/get",
+  "/api/app-config", // 👈 Add this
+];
 const AUTH_API_ROUTES = ["/api/auth/login", "/api/auth/refresh"];
+
+// 🔥 VERSION HELPER
+function isVersionLower(current: string, minimum: string) {
+  const c = current.split(".").map(Number);
+  const m = minimum.split(".").map(Number);
+
+  for (let i = 0; i < m.length; i++) {
+    if ((c[i] || 0) < m[i]) return true;
+    if ((c[i] || 0) > m[i]) return false;
+  }
+  return false;
+}
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // 1. Static files — exit immediately
+  // ── 1. STATIC FILES ─────────────────────────────────────
   if (pathname.startsWith("/_next") || pathname.startsWith("/favicon")) {
     return NextResponse.next();
   }
 
-  // 2. Auth API routes — always allow
+  // ── 2. AUTH API ROUTES ──────────────────────────────────
   if (AUTH_API_ROUTES.some((r) => pathname.startsWith(r))) {
     return NextResponse.next();
   }
 
-  // 2b. Optional auth routes — always allow, route handles its own auth
+  // ── 3. OPTIONAL AUTH ROUTES ─────────────────────────────
   if (OPTIONAL_AUTH_ROUTES.some((r) => pathname.startsWith(r))) {
     return NextResponse.next();
   }
 
-  // 3. Public routes — redirect to dashboard if already logged in
+  // ── 4. VERSION CHECK (🔥 DB BASED)
+  const platform = req.headers.get("x-platform");
+  const version = req.headers.get("x-app-version");
+
+  // 🔥 ADD THESE LOGS HERE
+  // console.log("---- VERSION DEBUG ----");
+  // console.log("PATH:", pathname);
+  // console.log("PLATFORM:", platform);
+  // console.log("VERSION:", version);
+  // console.log("-----------------------");
+
+  if (platform === "mobile") {
+    try {
+      const res = await fetch(new URL("/api/app-config", req.url).toString(), {
+        cache: "no-store",
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+
+        const latestVersion = result.data?.latestVersion ?? "1.0.0";
+        const forceUpdate = result.data?.forceUpdate ?? false;
+        const updateUrl = result.data?.updateUrl ?? "";
+
+        if (
+          forceUpdate &&
+          (!version || isVersionLower(version, latestVersion))
+        ) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "APP_OUTDATED",
+              message: "Please update your app to continue",
+              updateUrl:
+                updateUrl ||
+                "https://play.google.com/store/apps/details?id=your.app",
+            },
+            { status: 426 },
+          );
+        }
+      }
+
+      // 🔥 If config API fails → freeze app
+      else {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "APP_FROZEN",
+            message:
+              "The app is temporarily unavailable. Please contact support.",
+          },
+          { status: 503 },
+        );
+      }
+    } catch (e) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "APP_FROZEN",
+          message:
+            "The app is temporarily unavailable. Please contact support.",
+        },
+        { status: 503 },
+      );
+    }
+  }
+
+  // ── 5. PUBLIC ROUTES ────────────────────────────────────
   if (PUBLIC_ROUTES.includes(pathname)) {
     const accessToken = req.cookies.get("accessToken")?.value;
 
@@ -40,11 +123,10 @@ export async function proxy(req: NextRequest) {
       } catch {}
     }
 
-    // No valid access token — show login page
     return NextResponse.next();
   }
 
-  // 4. Protected routes — verify tokens
+  // ── 6. PROTECTED ROUTES ─────────────────────────────────
   const accessToken =
     req.cookies.get("accessToken")?.value ??
     req.headers.get("authorization")?.replace("Bearer ", "");
@@ -67,39 +149,6 @@ export async function proxy(req: NextRequest) {
         new TextEncoder().encode(process.env.JWT_ACCESS_SECRET),
       );
       return NextResponse.next();
-    } catch {}
-  }
-
-  if (refreshToken) {
-    try {
-      const refreshRes = await fetch(
-        new URL("/api/auth/refresh", req.url).toString(),
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken }),
-        },
-      );
-
-      if (refreshRes.ok) {
-        const { accessToken: newAccessToken } = await refreshRes.json();
-        const response = NextResponse.next();
-        response.cookies.set("accessToken", newAccessToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          maxAge: 60 * 15,
-          path: "/",
-        });
-        return response;
-      }
-
-      // Refresh failed — clear cookies and redirect to login
-      const loginUrl = new URL("/login", req.url);
-      const redirectRes = NextResponse.redirect(loginUrl);
-      redirectRes.cookies.delete("accessToken");
-      redirectRes.cookies.delete("refreshToken");
-      return redirectRes;
     } catch {}
   }
 
