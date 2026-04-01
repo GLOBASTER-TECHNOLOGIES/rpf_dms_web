@@ -12,7 +12,8 @@ import {
   BookOpen,
   LogOut,
   Megaphone,
-  Proportions
+  Proportions,
+  Smartphone
 } from "lucide-react";
 
 interface Module {
@@ -86,6 +87,14 @@ const modules: Module[] = [
     description: "Monitor upcoming security events and alerts.",
     href: "/admin/threat-calendar",
     icon: <CalendarClock size={24} strokeWidth={2} />,
+    borderAccent: "border-l-amber-500",
+    iconColors: "bg-amber-50 text-amber-700 group-hover:bg-amber-600 group-hover:text-white",
+  },
+  {
+    title: "App Version Control",
+    description: "Monitor upcoming security events and alerts.",
+    href: "/admin/app-config",
+    icon: <  Smartphone size={24} strokeWidth={2} />,
     borderAccent: "border-l-amber-500",
     iconColors: "bg-amber-50 text-amber-700 group-hover:bg-amber-600 group-hover:text-white",
   },
