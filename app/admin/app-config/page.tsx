@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Save, Trash2, RefreshCw, AlertCircle, CheckCircle2, Smartphone, ShieldAlert } from "lucide-react";
+// Added ArrowLeft to the imports
+import { Save, Trash2, RefreshCw, AlertCircle, CheckCircle2, Smartphone, ShieldAlert, ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation"; // Assumes you are using Next.js App Router
 
 interface AppConfigData {
     latestVersion: string;
@@ -10,6 +12,7 @@ interface AppConfigData {
 }
 
 const AppConfigPage = () => {
+    const router = useRouter(); // Initialize router
     const [config, setConfig] = useState<AppConfigData>({
         latestVersion: "",
         forceUpdate: false,
@@ -71,7 +74,7 @@ const AppConfigPage = () => {
             const res = await fetch("/api/app-config", { method: "DELETE" });
             if (res.ok) {
                 showStatus("success", "Configuration deleted");
-                fetchConfig(); // Re-fetch to trigger the auto-create logic in your GET api
+                fetchConfig();
             }
         } catch (error) {
             showStatus("error", "Failed to delete");
@@ -90,6 +93,15 @@ const AppConfigPage = () => {
     return (
         <div className="min-h-screen bg-slate-50 p-4 sm:p-8 md:p-12 font-sans">
             <div className="max-w-2xl mx-auto">
+
+                {/* Back Button */}
+                <button
+                    onClick={() => router.push("/admin")} // Update path as needed
+                    className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors mb-6 group"
+                >
+                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                    <span className="text-sm font-medium">Back to Admin</span>
+                </button>
 
                 {/* Header Section */}
                 <div className="flex justify-between items-start mb-8">
@@ -172,7 +184,6 @@ const AppConfigPage = () => {
                                 </div>
                             </div>
 
-                            {/* Fixed Custom Toggle Switch */}
                             <button
                                 type="button"
                                 role="switch"
