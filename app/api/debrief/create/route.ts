@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import Debrief from "@/models/Debrief.model";
 import connectDB from "@/config/dbConnect";
 import { generateDebriefAnalysis } from "@/config/debriefAI";
+import Shift from "@/models/ShiftDetails.model"; // Ensure path is correct
 
 function getShiftContext(): { shift: "Morning" | "Afternoon" | "Night" } {
   const now = new Date();
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
+    // 1. Authentication
     const cookieToken = req.cookies.get("accessToken")?.value;
     const authHeader = req.headers.get("authorization");
     const token =
@@ -46,17 +48,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── Flutter sends "trainNumber", destructure accordingly ─────────────
-    const { transcript, trainNumber } = await req.json();
-
-    if (!transcript?.trim())
-      return NextResponse.json(
-        { success: false, message: "Transcript required" },
-        { status: 400 },
-      );
-
+    // 2. Get Current Shift Context
     const { shift } = getShiftContext();
-
     const nowIST = new Date(
       new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
     );
@@ -69,6 +62,34 @@ export async function POST(req: NextRequest) {
     const startUTC = new Date(startOfDayIST.getTime() - istOffsetMs);
     const endUTC = new Date(endOfDayIST.getTime() - istOffsetMs);
 
+    // 🔥 3. CHECK IF OFFICER IS IN THE SHIFT LIST
+    // We look for a shift assigned for today with the matching shiftName
+    // where the decoded.id exists in the 'officers' array.
+    const activeShift = await Shift.findOne({
+      shiftName: shift,
+      shiftDate: { $gte: startUTC, $lte: endUTC },
+      officers: decoded.id, // Mongoose handles string to ObjectId conversion here
+    });
+
+    if (!activeShift) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Ask SO to add you to officer list of shift",
+        },
+        { status: 403 }, // Forbidden
+      );
+    }
+
+    // 4. Input Validation
+    const { transcript, trainNumber, hasIncident } = await req.json();
+    if (!transcript?.trim())
+      return NextResponse.json(
+        { success: false, message: "Transcript required" },
+        { status: 400 },
+      );
+
+    // 5. AI Analysis
     let aiResult: {
       summary: string;
       observations: string;
@@ -85,7 +106,7 @@ export async function POST(req: NextRequest) {
     }
 
     const newReport = {
-      trainNo: trainNumber?.trim() || null, // ← fixed: was trainNo (undefined), now trainNumber
+      trainNo: trainNumber?.trim() || null,
       transcript,
       summary: aiResult.summary,
       observations: Array.isArray(aiResult.observations)
@@ -97,6 +118,7 @@ export async function POST(req: NextRequest) {
       submittedAt: new Date(),
     };
 
+    // 6. Save Debrief
     const debrief = await Debrief.findOneAndUpdate(
       {
         staffId: decoded.id,
