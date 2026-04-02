@@ -9,26 +9,40 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const post = searchParams.get("post");
     const shiftName = searchParams.get("shift");
-    const date = searchParams.get("date");
+    // Ignore date from params
 
-    if (!post || !shiftName || !date) {
+    if (!post || !shiftName) {
       return NextResponse.json(
-        { success: false, message: "Missing query params: post, shift, date" },
+        { success: false, message: "Missing query params: post, shift" },
         { status: 400 },
       );
     }
 
-    // Match the full day in UTC for shiftDate
-    const dayStart = new Date(date);
-    const dayEnd = new Date(date);
-    dayEnd.setUTCHours(23, 59, 59, 999);
+    // --- SERVER TIME LOGIC (IST) ---
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istTime = new Date(now.getTime() + istOffset);
 
-    const shift = await Shift.findOne({
-      post: post.toUpperCase(),
-      shiftName: shiftName,
+    let year = istTime.getUTCFullYear();
+    let month = istTime.getUTCMonth();
+    let day = istTime.getUTCDate();
+    const istHour = istTime.getUTCHours();
+
+    if (istHour < 6 && shiftName === "Night") {
+      day = day - 1;
+    }
+
+    const dayStart = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+    const dayEnd = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+
+    const query = {
+      post: post.trim().toUpperCase(),
+      shiftName: shiftName.trim(), // Exact match, no regex
       shiftDate: { $gte: dayStart, $lte: dayEnd },
-    })
-      .populate("officers", "name forceNumber") // 🔥 ADD THIS LINE: This fetches the actual officer details
+    };
+
+    const shift = await Shift.findOne(query)
+      .populate("officers", "name forceNumber")
       .select("_id shiftName shiftDate post officers");
 
     if (!shift) {
