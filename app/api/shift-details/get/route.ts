@@ -23,8 +23,8 @@ export async function GET(req: NextRequest) {
     const istOffset = 5.5 * 60 * 60 * 1000;
     const istTime = new Date(now.getTime() + istOffset);
 
-    let year = istTime.getUTCFullYear();
-    let month = istTime.getUTCMonth();
+    const year = istTime.getUTCFullYear();
+    const month = istTime.getUTCMonth();
     let day = istTime.getUTCDate();
     const istHour = istTime.getUTCHours();
 
