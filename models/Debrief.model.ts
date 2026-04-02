@@ -15,7 +15,6 @@ export interface IDebrief extends Document {
   shift: "Morning" | "Afternoon" | "Night";
   date: Date;
   postCode?: string;
-  approved: boolean;
   reports: ITrainReport[];
 }
 
@@ -59,10 +58,6 @@ const DebriefSchema = new Schema<IDebrief>(
     },
     postCode: {
       type: String,
-    },
-    approved: {
-      type: Boolean,
-      default: false,
     },
     reports: {
       type: [TrainReportSchema],
