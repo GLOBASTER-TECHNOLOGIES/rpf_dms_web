@@ -202,7 +202,7 @@ export default function EditBriefing({ briefing, onSuccess, onCancel }: Props) {
               className="absolute inset-0 p-3 overflow-y-auto whitespace-pre-wrap break-words pointer-events-none select-none font-sans text-[13px] leading-relaxed tracking-normal"
               aria-hidden="true"
             >
-              {form.briefingScript.split(problematicRegex).map((part, i) => {
+              {form.briefingScript.split(problematicRegex).map((part: string, i: number) => {
                 if (problematicRegex.test(part)) {
                   // Explicitly forced bg-yellow-400 here
                   return <mark key={i} className="bg-yellow-400 text-transparent rounded-[2px]">{part}</mark>;
