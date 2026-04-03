@@ -40,14 +40,64 @@ const loadFontAsBase64 = async (url: string): Promise<string> => {
 
 const detectFont = (text: string): string => {
   if (!text) return "helvetica";
-  // Tamil Unicode Range
   if (/[\u0B80-\u0BFF]/.test(text)) return "NotoSansTamil";
-  // Malayalam Unicode Range
   if (/[\u0D00-\u0D7F]/.test(text)) return "NotoSansMalayalam";
-  // Devanagari (Hindi) Unicode Range
   if (/[\u0900-\u097F]/.test(text)) return "NotoSansDevanagari";
-
   return "helvetica";
+};
+
+// 🌟 FIX 1: Stricter Text Formatter to prevent "apk)" splits & clean encoding bugs
+const formatCellText = (text: string): string => {
+  if (!text) return "—";
+  let cleanText = String(text)
+    // Aggressively clean up mojibake encoding artifacts (ðØ)
+    .replace(/ðØ/g, "•")
+    .replace(/ð/g, "•") // Catch stray 'eth' characters often left behind
+    .replace(/Ø/g, "")
+    .replace(/[\u00A0]/g, " ")
+    .replace(/\t/g, " ")
+    .replace(/ {2,}/g, " ");
+
+  // FIX: Added \b (word boundary). It will detect " a)" but ignore "apk)"
+  cleanText = cleanText.replace(
+    /([^\n])\s*(•|-|\b\d+[\)\.]|\b[a-zA-Z]\)|\b[ivx]+\))\s+/gi,
+    "$1\n$2 ",
+  );
+  return cleanText.trim();
+};
+
+// 🌟 FIX 2: Stricter regex in the Mixed-Content Parser
+const parseBriefingScript = (
+  text: string,
+): { content: string; isList: boolean }[] => {
+  if (!text) return [];
+
+  let cleanText = formatCellText(text);
+  const blocks = cleanText
+    .split(/\n+/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+
+  const finalBlocks: { content: string; isList: boolean }[] = [];
+  // Also strictly requires word boundaries for list detection here
+  const listRegex = /^(?:•|-|\b\d+[\)\.]|\b[a-zA-Z]\)|\b[ivx]+\))\s/i;
+
+  blocks.forEach((block) => {
+    const isList = listRegex.test(block);
+
+    if (finalBlocks.length === 0) {
+      finalBlocks.push({ content: block, isList });
+    } else {
+      const prevBlock = finalBlocks[finalBlocks.length - 1];
+      if (isList || /[.:?!]$/.test(prevBlock.content)) {
+        finalBlocks.push({ content: block, isList });
+      } else {
+        prevBlock.content += " " + block;
+      }
+    }
+  });
+
+  return finalBlocks;
 };
 
 // Precise 0.6 thickness underline everywhere
@@ -58,9 +108,8 @@ function sectionHeader(doc: jsPDF, text: string, y: number): number {
   const sectionTitle = text.toUpperCase();
   doc.text(sectionTitle, 14, y + 6);
 
-  // Precise Underline
   const titleWidth = doc.getTextWidth(sectionTitle);
-  doc.setDrawColor(...INDIGO_600); // 79, 70, 229
+  doc.setDrawColor(...INDIGO_600);
   doc.setLineWidth(0.6);
   doc.line(14, y + 7.5, 14 + titleWidth, y + 7.5);
 
@@ -146,7 +195,6 @@ export const generateShiftPDF = async (data: any) => {
 
   let y = 44;
 
-  // Smart Cell Font hook: Checks the language of each cell and assigns the correct font
   const applyFontToCell = (data: any) => {
     if (data.cell.text && data.cell.text.length > 0) {
       const cellText = Array.isArray(data.cell.text)
@@ -190,107 +238,65 @@ export const generateShiftPDF = async (data: any) => {
 
   y = (doc as any).lastAutoTable.finalY + 12;
 
-  // ── 3. SO'S BRIEFING (✨ IMPROVED PARSER & STYLING) ────────────────────────
+  // ── 3. SO'S BRIEFING ────────────────────────
   y = checkPageBreak(doc, y, 40);
   y = sectionHeader(doc, "1. SO's Briefing Script", y);
 
-  const script =
+  const rawScript =
     data.briefingDocument?.briefingScript ||
     "No briefing script recorded for this shift.";
-
-  // Smart parsing: Add newlines before numbered list items if they are bunched up on the same line
-  const cleanScript = script
-    .replace(/([^\n])(\s*\b\d+[\)\.]\s)/g, "$1\n$2")
-    .trim();
-
-  // Split into individual points based on the numbered markers
-  const rawPoints = cleanScript
-    .split(/(?=(?:^|\n)\s*\d+[\)\.]\s)/g)
-    .map((p: string) => p.trim())
-    .filter(Boolean);
-  const scriptPoints: { title: string; body: string }[] = [];
-
-  // Check if the text actually utilizes a numbered list format
-  const isNumberedList =
-    rawPoints.length > 0 && /^\d+[\)\.]/.test(rawPoints[0]);
-
-  if (isNumberedList) {
-    rawPoints.forEach((pt: string) => {
-      const newlineIdx = pt.indexOf("\n");
-      if (newlineIdx !== -1) {
-        // Point has a natural line break. Treat first line as title.
-        scriptPoints.push({
-          title: pt.substring(0, newlineIdx).trim(),
-          body: pt.substring(newlineIdx + 1).trim(),
-        });
-      } else {
-        // Inline point without line breaks. Try to detect a title separated by colon or dash.
-        const match = pt.match(/^(\d+[\)\.]\s*[^a-z\n]+?)(?:--|:|-)(.*)$/);
-        if (match && match[1].length > 3) {
-          scriptPoints.push({ title: match[1].trim(), body: match[2].trim() });
-        } else {
-          scriptPoints.push({ title: "", body: pt });
-        }
-      }
-    });
-  } else {
-    // Not a numbered list, simply split into paragraphs
-    cleanScript
-      .split(/\n+/)
-      .filter(Boolean)
-      .forEach((b: string) => scriptPoints.push({ title: "", body: b }));
-  }
-
+  const scriptBlocks = parseBriefingScript(rawScript);
   const briefingRows: any[] = [];
 
-  // Construct autoTable rows for the Briefing Script
-  scriptPoints.forEach((sp) => {
-    if (sp.title) {
-      briefingRows.push([
-        {
-          content: sp.title,
-          styles: {
-            fillColor: SLATE_100, // Light slate background for titles
-            textColor: SLATE_900,
-            fontStyle: "bold",
-            fontSize: 9.5,
-            cellPadding: { top: 4, bottom: 4, left: 10, right: 10 },
+  const marginLeft = 14;
+  const marginRight = 14;
+  const tableWidth = pageWidth - marginLeft - marginRight;
+
+  scriptBlocks.forEach((block) => {
+    briefingRows.push([
+      {
+        content: block.content,
+        styles: {
+          fillColor: WHITE,
+          textColor: SLATE_800,
+          fontStyle: "normal",
+          fontSize: 9.5,
+          lineHeightFactor: 1.5,
+          overflow: "linebreak", // ✅ wrap instead of clip
+          cellWidth: tableWidth, // ✅ explicit width on the cell itself
+          cellPadding: {
+            top: 3,
+            bottom: 3,
+            left: block.isList ? 20 : 10,
+            right: 10, // ✅ right padding so text doesn't hug border
           },
         },
-      ]);
-    }
-    if (sp.body) {
-      briefingRows.push([
-        {
-          content: sp.body,
-          styles: {
-            fillColor: WHITE,
-            textColor: SLATE_800,
-            fontStyle: "normal", // No more dense italics
-            fontSize: 9.5,
-            lineHeightFactor: 1.5, // Much better line height for readability
-            // Link spacing: less top padding if it follows a title, more bottom padding to separate points
-            cellPadding: {
-              top: sp.title ? 2 : 5,
-              bottom: 8,
-              left: 10,
-              right: 10,
-            },
-          },
-        },
-      ]);
-    }
+      },
+    ]);
   });
 
   if (briefingRows.length > 0) {
     autoTable(doc, {
       startY: y,
       body: briefingRows,
-      theme: "plain", // No borders, relies on padding and background shades
+      theme: "plain",
+
       styles: {
-        overflow: "linebreak",
+        overflow: "linebreak", // ✅ global fallback
+        cellPadding: { top: 3, bottom: 3, left: 10, right: 10 },
       },
-      margin: { left: 14, right: 14 },
+
+      columnStyles: {
+        0: {
+          cellWidth: tableWidth, // ✅ strict column width
+          overflow: "linebreak",
+        },
+      },
+
+      tableWidth: tableWidth,
+
+      margin: { left: marginLeft, right: marginRight },
+
       didParseCell: applyFontToCell,
     });
     y = (doc as any).lastAutoTable.finalY + 12;
@@ -357,15 +363,9 @@ export const generateShiftPDF = async (data: any) => {
         const to = ins.validTo
           ? new Date(ins.validTo).toLocaleDateString("en-IN")
           : "—";
-
         const validity = `${from}\nto\n${to}`;
 
-        const formattedInstructions = ins.instruction
-          ? ins.instruction
-              .replace(/\s*(\d+\))/g, "\n$1")
-              .replace(/(\d+\)[^\n]*)/g, "$1\n")
-              .trim()
-          : "—";
+        const formattedInstructions = formatCellText(ins.instruction);
 
         return [
           {
@@ -383,22 +383,11 @@ export const generateShiftPDF = async (data: any) => {
         lineColor: [220, 220, 220],
         lineWidth: 0.1,
       },
-      headStyles: {
-        fillColor: [30, 41, 59],
-        textColor: 255,
-        fontSize: 8.5,
-      },
-      bodyStyles: {
-        fontSize: 9,
-        textColor: [51, 65, 85],
-        valign: "top",
-      },
+      headStyles: { fillColor: [30, 41, 59], textColor: 255, fontSize: 8.5 },
+      bodyStyles: { fontSize: 9, textColor: [51, 65, 85], valign: "top" },
       columnStyles: {
         0: { cellWidth: 35, fillColor: [250, 251, 252] },
-        1: {
-          cellWidth: "auto",
-          cellPadding: { top: 5, right: 8, bottom: 5, left: 5 },
-        },
+        1: { cellPadding: { top: 5, right: 8, bottom: 5, left: 5 } },
         2: { cellWidth: 28, halign: "center" },
       },
       margin: { left: 14, right: 14 },
@@ -423,7 +412,7 @@ export const generateShiftPDF = async (data: any) => {
       body: data.crimeIntel.map((c: any) => [
         `Train ${c.trainNumber || "—"}`,
         c.riskLevel || "—",
-        c.primaryDutyAction || "—",
+        formatCellText(c.primaryDutyAction),
       ]),
       theme: "grid",
       styles: { overflow: "linebreak", cellPadding: 4 },
@@ -433,7 +422,6 @@ export const generateShiftPDF = async (data: any) => {
       columnStyles: {
         0: { cellWidth: 35, fontStyle: "bold" },
         1: { cellWidth: 35, fontStyle: "bold", textColor: RED_600 },
-        2: { cellWidth: "auto" },
       },
       margin: { left: 14, right: 14 },
     });
@@ -453,7 +441,6 @@ export const generateShiftPDF = async (data: any) => {
     data.debriefs.forEach((d: any) => {
       y = checkPageBreak(doc, y, 40);
 
-      // Officer Header Block
       doc.setFillColor(...SLATE_100);
       doc.rect(14, y, pageWidth - 28, 8, "F");
 
@@ -485,7 +472,6 @@ export const generateShiftPDF = async (data: any) => {
           const finalSummary =
             r.summary || (r.transcript && !r.summary ? r.observations : null);
 
-          // ROW 1: Train Header
           bodyRows.push([
             {
               content: trainStr,
@@ -502,7 +488,6 @@ export const generateShiftPDF = async (data: any) => {
             },
           ]);
 
-          // ROW 2: Transcript & Summary LABELS
           bodyRows.push([
             {
               content: "TRANSCRIPT",
@@ -511,8 +496,6 @@ export const generateShiftPDF = async (data: any) => {
                 fontStyle: "bold",
                 fontSize: 7.5,
                 textColor: [100, 116, 139],
-                halign: "left",
-                valign: "middle",
                 cellPadding: { top: 4, bottom: 3, left: 14, right: 14 },
               },
             },
@@ -523,40 +506,32 @@ export const generateShiftPDF = async (data: any) => {
                 fontStyle: "bold",
                 fontSize: 7.5,
                 textColor: [100, 116, 139],
-                halign: "left",
-                valign: "middle",
                 cellPadding: { top: 4, bottom: 3, left: 14, right: 14 },
               },
             },
           ]);
 
-          // ROW 3: Transcript & Summary DATA
           bodyRows.push([
             {
-              content: r.transcript ? r.transcript.trim() : "—",
+              content: r.transcript ? formatCellText(r.transcript) : "—",
               styles: {
                 font: detectFont(r.transcript),
                 textColor: [30, 41, 59],
                 fontSize: 9,
-                halign: "left",
-                valign: "middle",
                 cellPadding: { top: 2, bottom: 5, left: 14, right: 14 },
               },
             },
             {
-              content: finalSummary ? finalSummary.trim() : "—",
+              content: finalSummary ? formatCellText(finalSummary) : "—",
               styles: {
                 font: "helvetica",
                 textColor: [30, 41, 59],
                 fontSize: 9,
-                halign: "left",
-                valign: "middle",
                 cellPadding: { top: 2, bottom: 5, left: 14, right: 14 },
               },
             },
           ]);
 
-          // ROW 4: Observations & Improvements LABELS
           bodyRows.push([
             {
               content: "OBSERVATIONS",
@@ -565,8 +540,6 @@ export const generateShiftPDF = async (data: any) => {
                 fontStyle: "bold",
                 fontSize: 7.5,
                 textColor: [100, 116, 139],
-                halign: "left",
-                valign: "middle",
                 cellPadding: { top: 4, bottom: 3, left: 14, right: 14 },
               },
             },
@@ -577,34 +550,27 @@ export const generateShiftPDF = async (data: any) => {
                 fontStyle: "bold",
                 fontSize: 7.5,
                 textColor: [100, 116, 139],
-                halign: "left",
-                valign: "middle",
                 cellPadding: { top: 4, bottom: 3, left: 14, right: 14 },
               },
             },
           ]);
 
-          // ROW 5: Observations & Improvements DATA
           bodyRows.push([
             {
-              content: r.observations || "—",
+              content: r.observations ? formatCellText(r.observations) : "—",
               styles: {
                 font: "helvetica",
                 textColor: [30, 41, 59],
                 fontSize: 9,
-                halign: "left",
-                valign: "middle",
                 cellPadding: { top: 2, bottom: 5, left: 14, right: 14 },
               },
             },
             {
-              content: r.improvements || "—",
+              content: r.improvements ? formatCellText(r.improvements) : "—",
               styles: {
                 font: "helvetica",
                 textColor: [30, 41, 59],
                 fontSize: 9,
-                halign: "left",
-                valign: "middle",
                 cellPadding: { top: 2, bottom: 5, left: 14, right: 14 },
               },
             },
@@ -651,7 +617,6 @@ export const generateShiftPDF = async (data: any) => {
   doc.setDrawColor(...SLATE_600);
   doc.setLineWidth(0.2);
 
-  // Duty Officer
   doc.line(14, y, 70, y);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
@@ -662,7 +627,6 @@ export const generateShiftPDF = async (data: any) => {
   doc.setTextColor(...SLATE_600);
   doc.text("Name / Rank / Date", 14, y + 9);
 
-  // Post In-charge
   doc.line(pageWidth - 70, y, pageWidth - 14, y);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
@@ -689,7 +653,6 @@ export const generateShiftPDF = async (data: any) => {
     doc.text("RPF DMS System", 14, pageHeight - 6);
   }
 
-  // Save the document
   const safePost = (data.post || "UNKNOWN").replace(/\s+/g, "");
   const safeShift = (data.shiftName || "SHIFT").replace(/\s+/g, "");
   doc.save(`${data.shiftDate}_${safePost}_${safeShift}.pdf`);
