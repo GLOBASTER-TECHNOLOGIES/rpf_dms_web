@@ -48,27 +48,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Get Current Shift Context
+    // 2. Get Current Shift Context (with Night shift date fix)
     const { shift } = getShiftContext();
-    const nowIST = new Date(
-      new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
-    );
-    const startOfDayIST = new Date(nowIST);
-    startOfDayIST.setHours(0, 0, 0, 0);
-    const endOfDayIST = new Date(nowIST);
-    endOfDayIST.setHours(23, 59, 59, 999);
 
-    const istOffsetMs = 5.5 * 60 * 60 * 1000;
-    const startUTC = new Date(startOfDayIST.getTime() - istOffsetMs);
-    const endUTC = new Date(endOfDayIST.getTime() - istOffsetMs);
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istTime = new Date(now.getTime() + istOffset);
 
-    // 🔥 3. CHECK IF OFFICER IS IN THE SHIFT LIST
-    // We look for a shift assigned for today with the matching shiftName
-    // where the decoded.id exists in the 'officers' array.
+    let year = istTime.getUTCFullYear();
+    let month = istTime.getUTCMonth();
+    let day = istTime.getUTCDate();
+    const istHour = istTime.getUTCHours();
+
+    // ✅ SAME fix as shift creation: after midnight but before 6 AM,
+    // the Night shift still belongs to the previous calendar day.
+    if (istHour < 6 && shift === "Night") {
+      day = day - 1;
+    }
+
+    const dayStart = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+    const dayEnd = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+
+    // 3. CHECK IF OFFICER IS IN THE SHIFT LIST
     const activeShift = await Shift.findOne({
       shiftName: shift,
-      shiftDate: { $gte: startUTC, $lte: endUTC },
-      officers: decoded.id, // Mongoose handles string to ObjectId conversion here
+      shiftDate: { $gte: dayStart, $lte: dayEnd },
+      officers: decoded.id,
     });
 
     if (!activeShift) {
@@ -77,7 +82,7 @@ export async function POST(req: NextRequest) {
           success: false,
           message: "Ask SO to add you to officer list of shift",
         },
-        { status: 403 }, // Forbidden
+        { status: 403 },
       );
     }
 
@@ -118,12 +123,12 @@ export async function POST(req: NextRequest) {
       submittedAt: new Date(),
     };
 
-    // 6. Save Debrief
+    // 6. Save Debrief (also fix the date range here)
     const debrief = await Debrief.findOneAndUpdate(
       {
         staffId: decoded.id,
         shift,
-        date: { $gte: startUTC, $lte: endUTC },
+        date: { $gte: dayStart, $lte: dayEnd },
       },
       {
         $setOnInsert: {
