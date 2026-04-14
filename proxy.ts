@@ -15,8 +15,10 @@ function isVersionLower(current: string, minimum: string) {
   const m = minimum.split(".").map(Number);
 
   for (let i = 0; i < m.length; i++) {
-    if ((c[i] || 0) < m[i]) return true;
-    if ((c[i] || 0) > m[i]) return false;
+    const cv = c[i] || 0;
+    const mv = m[i] || 0;
+    if (cv < mv) return true;
+    if (cv > mv) return false;
   }
   return false;
 }
@@ -43,13 +45,6 @@ export async function proxy(req: NextRequest) {
   const platform = req.headers.get("x-platform");
   const version = req.headers.get("x-app-version");
 
-  // 🔥 ADD THESE LOGS HERE
-  // console.log("---- VERSION DEBUG ----");
-  // console.log("PATH:", pathname);
-  // console.log("PLATFORM:", platform);
-  // console.log("VERSION:", version);
-  // console.log("-----------------------");
-
   if (platform === "mobile") {
     try {
       const res = await fetch(new URL("/api/app-config", req.url).toString(), {
@@ -58,40 +53,32 @@ export async function proxy(req: NextRequest) {
 
       if (res.ok) {
         const result = await res.json();
+        const config = result.data;
 
-        const latestVersion = result.data?.latestVersion ?? "1.0.0";
-        const forceUpdate = result.data?.forceUpdate ?? false;
-        const updateUrl = result.data?.updateUrl ?? "";
+        // If config is missing in DB, freeze app (Safety First)
+        if (!config) throw new Error("NO_CONFIG_IN_DB");
 
-        if (
-          forceUpdate &&
-          (!version || isVersionLower(version, latestVersion))
-        ) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: "APP_OUTDATED",
-              message: "Please update your app to continue",
-              updateUrl:
-                updateUrl ||
-                "https://play.google.com/store/apps/details?id=your.app",
-            },
-            { status: 426 },
-          );
+        const latestVersion = config.latestVersion;
+        const forceUpdate = config.forceUpdate;
+        const downloadUrl = config.downloadUrl; // Matches your new Model name
+
+        // STRICT CHECK: If forceUpdate is true, we MUST have a version and a URL
+        if (forceUpdate) {
+          if (!version || isVersionLower(version, latestVersion)) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: "APP_OUTDATED",
+                message: "Please update your app to continue",
+                downloadUrl: downloadUrl, // No hardcoded Play Store link here
+              },
+              { status: 426 },
+            );
+          }
         }
-      }
-
-      // 🔥 If config API fails → freeze app
-      else {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "APP_FROZEN",
-            message:
-              "The app is temporarily unavailable. Please contact support.",
-          },
-          { status: 503 },
-        );
+      } else {
+        // If API returns 503 or 404, freeze the app
+        throw new Error("CONFIG_API_FAILURE");
       }
     } catch (e) {
       return NextResponse.json(
