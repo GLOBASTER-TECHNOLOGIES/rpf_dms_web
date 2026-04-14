@@ -3,7 +3,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 export interface IAppConfig extends Document {
   latestVersion: string;
   forceUpdate: boolean;
-  updateUrl?: string;
+  downloadUrl?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -13,13 +13,12 @@ const AppConfigSchema: Schema<IAppConfig> = new Schema(
     latestVersion: {
       type: String,
       required: true,
-      default: "1.0.0",
     },
     forceUpdate: {
       type: Boolean,
       default: false,
     },
-    updateUrl: {
+    downloadUrl: {
       type: String,
       default: "",
     },
