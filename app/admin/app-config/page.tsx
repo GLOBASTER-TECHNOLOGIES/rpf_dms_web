@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation"; // Assumes you are using Next.js Ap
 interface AppConfigData {
     latestVersion: string;
     forceUpdate: boolean;
-    updateUrl: string;
+    downloadUrl: string;
 }
 
 const AppConfigPage = () => {
@@ -16,7 +16,7 @@ const AppConfigPage = () => {
     const [config, setConfig] = useState<AppConfigData>({
         latestVersion: "",
         forceUpdate: false,
-        updateUrl: "",
+        downloadUrl: "",
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -31,7 +31,7 @@ const AppConfigPage = () => {
                 setConfig({
                     latestVersion: result.data.latestVersion,
                     forceUpdate: result.data.forceUpdate,
-                    updateUrl: result.data.updateUrl,
+                    downloadUrl: result.data.downloadUrl,
                 });
             }
         } catch (error) {
@@ -158,15 +158,15 @@ const AppConfigPage = () => {
 
                         {/* URL Input */}
                         <div className="space-y-2">
-                            <label htmlFor="updateUrl" className="block text-sm font-semibold text-slate-900">
+                            <label htmlFor="downloadUrl" className="block text-sm font-semibold text-slate-900">
                                 Store URL <span className="text-slate-400 font-normal">(Optional)</span>
                             </label>
                             <input
-                                id="updateUrl"
+                                id="downloadUrl"
                                 type="url"
                                 placeholder="https://play.google.com/store/apps/details?id=..."
-                                value={config.updateUrl}
-                                onChange={(e) => setConfig({ ...config, updateUrl: e.target.value })}
+                                value={config.downloadUrl}
+                                onChange={(e) => setConfig({ ...config, downloadUrl: e.target.value })}
                                 className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
                             />
                             <p className="text-xs text-slate-500">The direct link where users will be redirected to download the update.</p>
