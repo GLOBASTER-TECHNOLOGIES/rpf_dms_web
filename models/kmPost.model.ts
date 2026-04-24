@@ -7,7 +7,6 @@ const kmPostSchema = new mongoose.Schema(
       required: true,
     },
 
-    // Example: "ERS-ALLP" (Ernakulam-Alappuzha) or "ERS-KTYM" (Ernakulam-Kottayam)
     section: {
       type: String,
       required: true,
