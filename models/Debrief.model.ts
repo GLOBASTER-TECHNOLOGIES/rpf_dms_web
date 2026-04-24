@@ -1,6 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-// ── Single train report inside a shift debrief ──
 export interface ITrainReport {
   trainNo?: string;
   transcript: string;
@@ -36,7 +35,7 @@ const TrainReportSchema = new Schema<ITrainReport>(
       default: Date.now,
     },
   },
-  { _id: true }, // each report gets its own _id
+  { _id: true },
 );
 
 const DebriefSchema = new Schema<IDebrief>(
