@@ -16,7 +16,7 @@ export async function GET() {
           message:
             "The app is temporarily unavailable. Please contact support or try again later.",
         },
-        { status: 503 }, // Service Unavailable 🔥
+        { status: 503 },
       );
     }
 
