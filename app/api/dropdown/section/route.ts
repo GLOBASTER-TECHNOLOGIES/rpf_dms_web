@@ -1,19 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/config/dbConnect";
 import Section from "@/models/drop-down/sectionDropDown.model";
-import { getAuth } from "@/config/getAuth";
 
-/**
- * GET: Retrieve all sections
- */
 export async function GET(req: NextRequest) {
   try {
     await dbConnect();
-    const user = await getAuth(req);
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     // Sorted by Post then Section Code for better UI organization
     const sections = await Section.find().sort({ createdAt: -1 });
@@ -29,15 +20,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await dbConnect();
-    const user = await getAuth(req);
-
-    // Permission check matching your existing logic
-    if (!user || (user.role !== "ADMIN" && user.appRole !== "IPF")) {
-      return NextResponse.json(
-        { error: "Insufficient permissions" },
-        { status: 403 },
-      );
-    }
 
     const body = await req.json();
     const { post, sectionCode, type } = body;
