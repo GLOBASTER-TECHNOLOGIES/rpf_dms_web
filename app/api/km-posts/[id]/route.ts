@@ -3,9 +3,15 @@ import dbConnect from "@/config/dbConnect";
 import KmPost from "@/models/kmPost.model";
 
 // GET: Fetch single post
-export async function GET(request: NextRequest, { params }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
   await dbConnect();
-  const { id } = params;
+
+  // ✅ FIX: Await params before using
+  const { id } = await params;
+
   try {
     const post = await KmPost.findById(id);
     if (!post) return NextResponse.json({ success: false }, { status: 404 });
@@ -17,9 +23,15 @@ export async function GET(request: NextRequest, { params }) {
 }
 
 // PUT: Update post
-export async function PUT(request: NextRequest, { params }) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
   await dbConnect();
-  const { id } = params;
+
+  // ✅ FIX: Await params before using
+  const { id } = await params;
+
   try {
     const body = await request.json();
     const post = await KmPost.findByIdAndUpdate(id, body, {
@@ -38,9 +50,15 @@ export async function PUT(request: NextRequest, { params }) {
 }
 
 // DELETE: Remove post
-export async function DELETE(request: NextRequest, { params }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
   await dbConnect();
-  const { id } = params;
+
+  // ✅ FIX: Await params before using
+  const { id } = await params;
+
   try {
     const deletedPost = await KmPost.deleteOne({ _id: id });
     if (!deletedPost.deletedCount) {
