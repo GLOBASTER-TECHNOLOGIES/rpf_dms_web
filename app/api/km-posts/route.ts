@@ -20,14 +20,41 @@ export async function GET() {
 // POST: Create a new post
 export async function POST(request: NextRequest) {
   await dbConnect();
+
   try {
     const body = await request.json();
+
+    const { km_number, section, division } = body;
+
+    // CHECK IF KM POST ALREADY EXISTS
+    const existing = await KmPost.findOne({
+      km_number,
+      section,
+      division, // optional but recommended
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "KM Post already added for this section",
+        },
+        { status: 400 },
+      );
+    }
+
+    // CREATE IF NOT EXISTS
     const post = await KmPost.create(body);
+
     return NextResponse.json({ success: true, data: post }, { status: 201 });
   } catch (error: any) {
     console.log(error);
+
     return NextResponse.json(
-      { success: false, error: error.message },
+      {
+        success: false,
+        message: error.message,
+      },
       { status: 400 },
     );
   }
