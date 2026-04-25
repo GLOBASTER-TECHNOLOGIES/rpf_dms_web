@@ -1,27 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/config/dbConnect";
 import postDropdownModel from "@/models/drop-down/postDropdown.model";
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
 
-/**
- * PUT: Update a specific post
- */
-export async function PUT(req: NextRequest, { params }: RouteParams) {
+// UPDATE
+export async function PUT(req: NextRequest, { params }: any) {
   try {
     await dbConnect();
+
+    const { id } = await params;
 
     const body = await req.json();
     const updateData: any = {};
 
-    if (body.postCode) updateData.postCode = body.postCode.toUpperCase().trim();
-    if (body.postType) updateData.postType = body.postType;
+    if (body.postCode) {
+      updateData.postCode = body.postCode.toUpperCase().trim();
+    }
+
+    if (body.postType) {
+      updateData.postType = body.postType;
+    }
 
     const updatedPost = await postDropdownModel.findByIdAndUpdate(
       id,
       { $set: updateData },
-      { new: true, runValidators: true },
+      {
+        returnDocument: "after", // FIX for mongoose warning
+        runValidators: true,
+      },
     );
 
     if (!updatedPost) {
@@ -39,16 +44,17 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
         { status: 400 },
       );
     }
+
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-/**
- * DELETE: Remove a specific post
- */
-export async function DELETE(req: NextRequest, { params }: RouteParams) {
+// DELETE
+export async function DELETE(req: NextRequest, { params }: any) {
   try {
     await dbConnect();
+
+    const { id } = await params;
 
     const deleted = await postDropdownModel.findByIdAndDelete(id);
 
