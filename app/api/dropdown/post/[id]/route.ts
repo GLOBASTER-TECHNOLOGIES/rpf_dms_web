@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/config/dbConnect";
-import postDropdownModel from "@/models/drop-down/postDropdown.model"; // Ensure path is correct
-import { getAuth } from "@/config/getAuth";
-
+import postDropdownModel from "@/models/drop-down/postDropdown.model";
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
@@ -13,12 +11,6 @@ interface RouteParams {
 export async function PUT(req: NextRequest, { params }: RouteParams) {
   try {
     await dbConnect();
-    const user = await getAuth(req);
-    const { id } = await params;
-
-    if (!user || user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    }
 
     const body = await req.json();
     const updateData: any = {};
@@ -57,12 +49,6 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
     await dbConnect();
-    const user = await getAuth(req);
-    const { id } = await params;
-
-    if (!user || user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    }
 
     const deleted = await postDropdownModel.findByIdAndDelete(id);
 
