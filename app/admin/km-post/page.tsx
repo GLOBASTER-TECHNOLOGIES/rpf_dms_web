@@ -9,7 +9,9 @@ import {
     Map as MapIcon,
     Navigation,
     Loader2,
-    AlertCircle
+    AlertCircle,
+    Globe, // Icon for coordinates
+    LocateFixed // Icon for longitude
 } from "lucide-react";
 
 interface KmPost {
@@ -17,8 +19,8 @@ interface KmPost {
     division: string;
     section: string;
     km_number: number;
-    latitude?: number;
-    longitude?: number;
+    latitude: number; // Made mandatory for form handling
+    longitude: number; // Made mandatory for form handling
     jurisdiction_rpfPost?: string;
 }
 
@@ -29,6 +31,8 @@ export default function KmPostPage() {
         division: "",
         section: "",
         km_number: 0,
+        latitude: 0,
+        longitude: 0,
     });
 
     const [error, setError] = useState("");
@@ -54,9 +58,11 @@ export default function KmPostPage() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
+        const isNumeric = ["km_number", "latitude", "longitude"].includes(name);
+
         setForm({
             ...form,
-            [name]: name === "km_number" ? parseFloat(value) : value.toUpperCase()
+            [name]: isNumeric ? parseFloat(value) || 0 : value.toUpperCase()
         });
     };
 
@@ -84,7 +90,7 @@ export default function KmPostPage() {
                 return;
             }
 
-            setForm({ division: "", section: "", km_number: 0 });
+            setForm({ division: "", section: "", km_number: 0, latitude: 0, longitude: 0 });
             fetchPosts();
         } catch (err) {
             setError("Server connection error.");
@@ -106,7 +112,7 @@ export default function KmPostPage() {
 
     return (
         <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-8">
-            <div className="max-w-6xl mx-auto">
+            <div className="max-w-7xl mx-auto">
 
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
@@ -116,7 +122,7 @@ export default function KmPostPage() {
                         </div>
                         <div>
                             <h1 className="text-2xl font-black text-slate-900 tracking-tight">KM Post Directory</h1>
-                            <p className="text-slate-500 text-sm font-medium">Manage and map railway kilometer markers</p>
+                            <p className="text-slate-500 text-sm font-medium">Railway kilometer markers & GPS Coordinates</p>
                         </div>
                     </div>
                 </div>
@@ -133,8 +139,8 @@ export default function KmPostPage() {
                                 </h2>
                             </div>
 
-                            <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                                <div className="space-y-4">
+                            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                                <div className="space-y-3">
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-bold uppercase text-slate-500 ml-1">Division</label>
                                         <input
@@ -142,7 +148,7 @@ export default function KmPostPage() {
                                             placeholder="E.g. TVC"
                                             value={form.division}
                                             onChange={handleChange}
-                                            className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-900 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                                            className="w-full px-4 py-2 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-900 focus:border-indigo-500 focus:bg-white outline-none transition-all"
                                         />
                                     </div>
 
@@ -153,22 +159,56 @@ export default function KmPostPage() {
                                             placeholder="E.g. ERS-TVC"
                                             value={form.section}
                                             onChange={handleChange}
-                                            className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-900 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                                            className="w-full px-4 py-2 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-900 focus:border-indigo-500 focus:bg-white outline-none transition-all"
                                         />
                                     </div>
 
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-bold uppercase text-slate-500 ml-1">KM Number</label>
                                         <div className="relative">
-                                            <Navigation className="absolute left-3 top-3 text-slate-400" size={16} />
+                                            <Navigation className="absolute left-3 top-2.5 text-slate-400" size={16} />
                                             <input
                                                 name="km_number"
                                                 type="number"
                                                 placeholder="0.00"
                                                 value={form.km_number || ""}
                                                 onChange={handleChange}
-                                                className="w-full pl-10 pr-4 py-2.5 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-900 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                                                className="w-full pl-10 pr-4 py-2 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-900 focus:border-indigo-500 focus:bg-white outline-none transition-all"
                                             />
+                                        </div>
+                                    </div>
+
+                                    {/* GPS Fields Row */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold uppercase text-slate-500 ml-1">Latitude</label>
+                                            <div className="relative">
+                                                <Globe className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                                                <input
+                                                    name="latitude"
+                                                    type="number"
+                                                    step="any"
+                                                    placeholder="0.0000"
+                                                    value={form.latitude || ""}
+                                                    onChange={handleChange}
+                                                    className="w-full pl-9 pr-3 py-2 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-900 focus:border-indigo-500 focus:bg-white outline-none transition-all text-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold uppercase text-slate-500 ml-1">Longitude</label>
+                                            <div className="relative">
+                                                <LocateFixed className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                                                <input
+                                                    name="longitude"
+                                                    type="number"
+                                                    step="any"
+                                                    placeholder="0.0000"
+                                                    value={form.longitude || ""}
+                                                    onChange={handleChange}
+                                                    className="w-full pl-9 pr-3 py-2 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-900 focus:border-indigo-500 focus:bg-white outline-none transition-all text-sm"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -229,6 +269,7 @@ export default function KmPostPage() {
                                                 <th className="px-6 py-4 text-xs font-black uppercase text-slate-400 tracking-wider">Division</th>
                                                 <th className="px-6 py-4 text-xs font-black uppercase text-slate-400 tracking-wider">Section</th>
                                                 <th className="px-6 py-4 text-xs font-black uppercase text-slate-400 tracking-wider">KM Marker</th>
+                                                <th className="px-6 py-4 text-xs font-black uppercase text-slate-400 tracking-wider">GPS Coordinates</th>
                                                 <th className="px-6 py-4 text-xs font-black uppercase text-slate-400 tracking-wider text-right">Actions</th>
                                             </tr>
                                         </thead>
@@ -241,6 +282,16 @@ export default function KmPostPage() {
                                                         <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-black border border-indigo-200">
                                                             KM {post.km_number}
                                                         </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex flex-col text-[11px] font-mono text-slate-500">
+                                                            <span className="flex items-center gap-1">
+                                                                <span className="text-indigo-400 font-bold">LAT:</span> {post.latitude?.toFixed(5) || 'N/A'}
+                                                            </span>
+                                                            <span className="flex items-center gap-1">
+                                                                <span className="text-indigo-400 font-bold">LNG:</span> {post.longitude?.toFixed(5) || 'N/A'}
+                                                            </span>
+                                                        </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
                                                         <button
