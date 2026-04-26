@@ -13,7 +13,10 @@ import {
   LogOut,
   Megaphone,
   Proportions,
-  Smartphone
+  Smartphone,
+  Database,
+  Signpost,
+  SquareStack
 } from "lucide-react";
 
 interface Module {
@@ -102,7 +105,7 @@ const modules: Module[] = [
     title: "App Drop Down Data Control",
     description: "Update and add dropdown data in app.",
     href: "/admin/dropdown",
-    icon: <  Smartphone size={24} strokeWidth={2} />,
+    icon: <  Database size={24} strokeWidth={2} />,
     borderAccent: "border-l-amber-500",
     iconColors: "bg-amber-50 text-amber-700 group-hover:bg-amber-600 group-hover:text-white",
   },
@@ -110,15 +113,15 @@ const modules: Module[] = [
     title: "KM Post",
     description: "Manage km post data.",
     href: "/admin/km-post",
-    icon: <  Smartphone size={24} strokeWidth={2} />,
+    icon: <  Signpost size={24} strokeWidth={2} />,
     borderAccent: "border-l-amber-500",
     iconColors: "bg-amber-50 text-amber-700 group-hover:bg-amber-600 group-hover:text-white",
   },
   {
     title: "KM Incident Intel",
     description: "Manage incident intel km wise.",
-    href: "/admin/km-intel",
-    icon: <  Smartphone size={24} strokeWidth={2} />,
+    href: "/admin/km-incident",
+    icon: <  SquareStack size={24} strokeWidth={2} />,
     borderAccent: "border-l-amber-500",
     iconColors: "bg-amber-50 text-amber-700 group-hover:bg-amber-600 group-hover:text-white",
   },
