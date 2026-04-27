@@ -9,6 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^9.0.0",
+    "@mui/x-charts": "^9.0.2",
     "axios": "^1.13.6",
     "bcryptjs": "^3.0.3",
     "firebase-admin": "^13.7.0",
@@ -19,6 +23,7 @@
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.577.0",
     "mongoose": "^9.2.4",
+    "mui": "^0.0.1",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
