@@ -120,17 +120,14 @@ export default function SectionPage() {
                     <div className="sticky top-28">
                         <div className="mb-6">
                             <h2 className="text-xl font-semibold text-slate-900">
-                                {editingId ? "Modify Section" : "New Entry"}
+                                {editingId ? "Modify Section" : "New Section"}
                             </h2>
-                            <p className="text-sm text-slate-500 mt-1">
-                                Define organizational units and hierarchy codes.
-                            </p>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-5 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                             <div className="space-y-4">
                                 <div className="space-y-1.5">
-                                    <label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Reporting Post</label>
+                                    <label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Post</label>
                                     <input
                                         type="text"
                                         placeholder="e.g. TPJ"
@@ -141,7 +138,7 @@ export default function SectionPage() {
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Section Identifier</label>
+                                    <label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Section</label>
                                     <input
                                         type="text"
                                         placeholder="e.g. TPJ-SRM"
