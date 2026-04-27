@@ -1,9 +1,8 @@
 "use client"
 import React, { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
-
-// Dynamically import ApexCharts to prevent Next.js server-side rendering crashes
-const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
+import { LineChart } from '@mui/x-charts/LineChart';
+import { PieChart } from '@mui/x-charts/PieChart';
+import { BarChart } from '@mui/x-charts/BarChart';
 
 interface Officer {
     name: string;
@@ -74,89 +73,21 @@ export default function PerformancePage() {
         if (searchInput.trim()) setActiveForceNumber(searchInput.trim());
     };
 
-    // --- 1. Area Chart (Timeline Trend) Options ---
-    const areaOptions: ApexCharts.ApexOptions = {
-        chart: {
-            type: 'area',
-            toolbar: { show: true },
-            fontFamily: 'inherit',
-        },
-        colors: ['#3b82f6'],
-        dataLabels: { enabled: false },
-        // FIXED: Changed from 'smooth' to 'straight' so it doesn't draw weird curves between sparse data points
-        stroke: { curve: 'smooth', width: 2 },
-        xaxis: {
-            categories: dashboardData?.timeline.map(item => item.date) || [],
-            type: 'datetime', // Tells ApexCharts to treat these strings as real dates
-            labels: {
-                format: 'dd MMM', // Formats "2026-03-23" into "23 Mar"
-                style: { colors: '#9ca3af' }
-            }
-        },
-        tooltip: {
-            x: { format: 'dd MMM yyyy' } // Keeps the full year visible when hovering
-        },
-        yaxis: {
-            labels: { style: { colors: '#9ca3af' }, formatter: (val) => Math.floor(val).toString() }
-        },
-        grid: { borderColor: '#f3f4f6', strokeDashArray: 4 },
-        fill: {
-            type: 'gradient',
-            gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] }
-        }
-    };
+    // --- Data Transformations for MUI Charts ---
+    const timelineDates = dashboardData?.timeline.map(item => new Date(item.date)) || [];
+    const timelineCounts = dashboardData?.timeline.map(item => item.reportCount) || [];
 
-    const areaSeries = [
-        { name: 'Reports', data: dashboardData?.timeline.map(item => item.reportCount) || [] }
-    ];
+    // Format dates for the Bar Chart X-Axis (since it uses a band scale)
+    const formattedDateStrings = timelineDates.map(date =>
+        date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
+    );
 
-    // --- 2. Donut Chart (Shift Distribution) Options ---
-    const donutOptions: ApexCharts.ApexOptions = {
-        chart: { type: 'donut', fontFamily: 'inherit' },
-        labels: dashboardData?.shiftBreakdown.map(item => item.shift) || [],
-        colors: dashboardData?.shiftBreakdown.map(item => SHIFT_COLORS[item.shift] || SHIFT_COLORS.Unknown) || [],
-        dataLabels: { enabled: true },
-        plotOptions: {
-            pie: { donut: { size: '65%' } }
-        },
-        legend: { position: 'bottom' }
-    };
-
-    const donutSeries = dashboardData?.shiftBreakdown.map(item => item.reportCount) || [];
-
-    // --- 3. Bar Chart (Daily Breakdown) Options ---
-    const barOptions: ApexCharts.ApexOptions = {
-        chart: {
-            type: 'bar',
-            fontFamily: 'inherit',
-            toolbar: { show: true }
-        },
-        colors: ['#3b82f6'],
-        plotOptions: {
-            bar: {
-                borderRadius: 4,
-                columnWidth: '50%',
-                dataLabels: { position: 'top' }
-            }
-        },
-        dataLabels: {
-            enabled: true,
-            offsetY: -20,
-            style: { fontSize: '12px', colors: ["#6b7280"] }
-        },
-        xaxis: {
-            categories: dashboardData?.timeline.map(item => item.date) || [],
-            labels: { style: { colors: '#9ca3af' } }
-        },
-        yaxis: {
-            labels: { style: { colors: '#9ca3af' }, formatter: (val) => Math.floor(val).toString() }
-        },
-        grid: { borderColor: '#f3f4f6', strokeDashArray: 4 }
-    };
-
-    const barSeries = [
-        { name: 'Reports', data: dashboardData?.timeline.map(item => item.reportCount) || [] }
-    ];
+    const pieChartData = dashboardData?.shiftBreakdown.map((item, index) => ({
+        id: index,
+        value: item.reportCount,
+        label: item.shift,
+        color: SHIFT_COLORS[item.shift] || SHIFT_COLORS.Unknown
+    })) || [];
 
     return (
         <div className="p-6 bg-gray-50 min-h-screen text-gray-900">
@@ -235,38 +166,79 @@ export default function PerformancePage() {
                             </div>
                         </div>
 
-                        {/* Timeline Chart (ApexCharts) */}
+                        {/* Timeline Area Chart (MUI) */}
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 md:col-span-2">
                             <h4 className="text-lg font-bold text-gray-800 mb-6">Activity Trend</h4>
                             {dashboardData.timeline.length === 0 ? (
                                 <div className="h-64 flex items-center justify-center text-gray-400">No activity in this period.</div>
                             ) : (
-                                <div className="w-full">
-                                    <Chart options={areaOptions} series={areaSeries} type="area" height={320} />
+                                <div className="w-full h-80">
+                                    <LineChart
+                                        xAxis={[{
+                                            data: timelineDates,
+                                            scaleType: 'time',
+                                            valueFormatter: (date) => new Date(date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
+                                        }]}
+                                        series={[{
+                                            data: timelineCounts,
+                                            area: true,
+                                            color: '#3b82f6',
+                                            showMark: false,
+                                        }]}
+                                        grid={{ horizontal: true }}
+                                        margin={{ left: 40, right: 20, top: 20, bottom: 30 }}
+                                    />
                                 </div>
                             )}
                         </div>
 
-                        {/* Shift Breakdown Donut Chart (ApexCharts) */}
+                        {/* Shift Breakdown Donut Chart (MUI) */}
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 md:col-span-1">
                             <h4 className="text-lg font-bold text-gray-800 mb-6">Shift Distribution</h4>
                             {dashboardData.shiftBreakdown.length === 0 ? (
                                 <div className="h-64 flex items-center justify-center text-gray-400">No shift data available.</div>
                             ) : (
-                                <div className="w-full flex justify-center mt-4">
-                                    <Chart options={donutOptions} series={donutSeries} type="donut" height={320} />
+                                <div className="w-full h-80 flex justify-center mt-4">
+                                    <PieChart
+                                        series={[{
+                                            data: pieChartData,
+                                            innerRadius: 65,
+                                            outerRadius: 100,
+                                            paddingAngle: 2,
+                                            cornerRadius: 4,
+                                        }]}
+                                        slotProps={{
+                                            legend: {
+                                                position: { vertical: 'bottom', horizontal: 'center' }
+                                            },
+                                        }}
+                                        margin={{ top: 10, bottom: 80, left: 10, right: 10 }}
+                                    />
                                 </div>
                             )}
                         </div>
 
-                        {/* NEW: Daily Breakdown Bar Chart */}
+                        {/* Daily Breakdown Bar Chart (MUI) */}
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 md:col-span-3">
                             <h4 className="text-lg font-bold text-gray-800 mb-6">Daily Report Breakdown</h4>
                             {dashboardData.timeline.length === 0 ? (
                                 <div className="h-64 flex items-center justify-center text-gray-400">No activity in this period.</div>
                             ) : (
-                                <div className="w-full">
-                                    <Chart options={barOptions} series={barSeries} type="bar" height={350} />
+                                <div className="w-full h-80">
+                                    <BarChart
+                                        xAxis={[{
+                                            scaleType: 'band',
+                                            data: formattedDateStrings,
+                                            categoryGapRatio: 0.5
+                                        }]}
+                                        series={[{
+                                            data: timelineCounts,
+                                            color: '#3b82f6',
+                                        }]}
+                                        borderRadius={4}
+                                        grid={{ horizontal: true }}
+                                        margin={{ left: 40, right: 20, top: 20, bottom: 40 }}
+                                    />
                                 </div>
                             )}
                         </div>
