@@ -10,23 +10,27 @@ import {
     Navigation,
     Loader2,
     AlertCircle,
-    Globe, // Icon for coordinates
-    LocateFixed // Icon for longitude
+    Globe,
+    LocateFixed,
+    Pencil,
+    X
 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface KmPost {
     _id?: string;
     division: string;
     section: string;
     km_number: number;
-    latitude: number; // Made mandatory for form handling
-    longitude: number; // Made mandatory for form handling
-    jurisdiction_rpfPost?: string;
+    latitude: number;
+    longitude: number;
 }
 
 export default function KmPostPage() {
     const [posts, setPosts] = useState<KmPost[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [form, setForm] = useState<KmPost>({
         division: "",
         section: "",
@@ -38,6 +42,8 @@ export default function KmPostPage() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const router = useRouter();
 
     const fetchPosts = async () => {
         try {
@@ -66,6 +72,23 @@ export default function KmPostPage() {
         });
     };
 
+    const handleEdit = (post: KmPost) => {
+        setEditingId(post._id || null);
+        setForm({
+            division: post.division,
+            section: post.section,
+            km_number: post.km_number,
+            latitude: post.latitude,
+            longitude: post.longitude,
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const cancelEdit = () => {
+        setEditingId(null);
+        setForm({ division: "", section: "", km_number: 0, latitude: 0, longitude: 0 });
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
@@ -77,8 +100,12 @@ export default function KmPostPage() {
 
         try {
             setIsSubmitting(true);
-            const res = await fetch("/api/km-posts", {
-                method: "POST",
+            const url = editingId ? `/api/km-posts/${editingId}` : "/api/km-posts";
+            // Changed to PUT as requested
+            const method = editingId ? "PUT" : "POST";
+
+            const res = await fetch(url, {
+                method: method,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(form),
             });
@@ -90,7 +117,7 @@ export default function KmPostPage() {
                 return;
             }
 
-            setForm({ division: "", section: "", km_number: 0, latitude: 0, longitude: 0 });
+            cancelEdit();
             fetchPosts();
         } catch (err) {
             setError("Server connection error.");
@@ -111,9 +138,17 @@ export default function KmPostPage() {
     );
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-8">
+        <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-8 text-slate-900">
             <div className="max-w-7xl mx-auto">
-
+                <div className="mb-4">
+                    <button
+                        onClick={() => router.push("/admin")}
+                        className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition"
+                    >
+                        <ArrowLeft size={18} />
+                        <span className="text-sm font-medium">Back</span>
+                    </button>
+                </div>
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                     <div className="flex items-center gap-3">
@@ -121,7 +156,7 @@ export default function KmPostPage() {
                             <MapIcon className="text-white w-6 h-6" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-black text-slate-900 tracking-tight">KM Post Directory</h1>
+                            <h1 className="text-2xl font-black tracking-tight">KM Post Directory</h1>
                             <p className="text-slate-500 text-sm font-medium">Railway kilometer markers & GPS Coordinates</p>
                         </div>
                     </div>
@@ -132,11 +167,16 @@ export default function KmPostPage() {
                     {/* Left Column: Form */}
                     <div className="lg:col-span-4">
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden sticky top-8">
-                            <div className="bg-slate-50 border-b px-6 py-4">
+                            <div className="bg-slate-50 border-b px-6 py-4 flex justify-between items-center">
                                 <h2 className="font-bold text-slate-700 flex items-center gap-2">
-                                    <Plus size={18} className="text-indigo-600" />
-                                    Add New Marker
+                                    {editingId ? <Pencil size={18} className="text-amber-500" /> : <Plus size={18} className="text-indigo-600" />}
+                                    {editingId ? "Update Marker" : "Add New Marker"}
                                 </h2>
+                                {editingId && (
+                                    <button onClick={cancelEdit} className="text-slate-400 hover:text-slate-600">
+                                        <X size={18} />
+                                    </button>
+                                )}
                             </div>
 
                             <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -148,7 +188,7 @@ export default function KmPostPage() {
                                             placeholder="E.g. TVC"
                                             value={form.division}
                                             onChange={handleChange}
-                                            className="w-full px-4 py-2 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-900 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                                            className="w-full px-4 py-2 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-indigo-500 focus:bg-white outline-none transition-all"
                                         />
                                     </div>
 
@@ -159,31 +199,30 @@ export default function KmPostPage() {
                                             placeholder="E.g. ERS-TVC"
                                             value={form.section}
                                             onChange={handleChange}
-                                            className="w-full px-4 py-2 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-900 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                                            className="w-full px-4 py-2 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-indigo-500 focus:bg-white outline-none transition-all"
                                         />
                                     </div>
 
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-bold uppercase text-slate-500 ml-1">KM Number</label>
-                                        <div className="relative">
-                                            <Navigation className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                                        <div className="relative flex items-center">
+                                            <Navigation className="absolute left-3 text-slate-400 pointer-events-none" size={16} />
                                             <input
                                                 name="km_number"
                                                 type="number"
                                                 placeholder="0.00"
                                                 value={form.km_number || ""}
                                                 onChange={handleChange}
-                                                className="w-full pl-10 pr-4 py-2 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-900 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                                                className="w-full pl-10 pr-4 py-2 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-indigo-500 focus:bg-white outline-none transition-all"
                                             />
                                         </div>
                                     </div>
 
-                                    {/* GPS Fields Row */}
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="space-y-1.5">
                                             <label className="text-xs font-bold uppercase text-slate-500 ml-1">Latitude</label>
-                                            <div className="relative">
-                                                <Globe className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                                            <div className="relative flex items-center">
+                                                <Globe className="absolute left-3 text-slate-400 pointer-events-none" size={14} />
                                                 <input
                                                     name="latitude"
                                                     type="number"
@@ -191,14 +230,14 @@ export default function KmPostPage() {
                                                     placeholder="0.0000"
                                                     value={form.latitude || ""}
                                                     onChange={handleChange}
-                                                    className="w-full pl-9 pr-3 py-2 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-900 focus:border-indigo-500 focus:bg-white outline-none transition-all text-sm"
+                                                    className="w-full pl-9 pr-3 py-2 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-indigo-500 focus:bg-white outline-none transition-all text-sm"
                                                 />
                                             </div>
                                         </div>
                                         <div className="space-y-1.5">
                                             <label className="text-xs font-bold uppercase text-slate-500 ml-1">Longitude</label>
-                                            <div className="relative">
-                                                <LocateFixed className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                                            <div className="relative flex items-center">
+                                                <LocateFixed className="absolute left-3 text-slate-400 pointer-events-none" size={14} />
                                                 <input
                                                     name="longitude"
                                                     type="number"
@@ -206,7 +245,7 @@ export default function KmPostPage() {
                                                     placeholder="0.0000"
                                                     value={form.longitude || ""}
                                                     onChange={handleChange}
-                                                    className="w-full pl-9 pr-3 py-2 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-900 focus:border-indigo-500 focus:bg-white outline-none transition-all text-sm"
+                                                    className="w-full pl-9 pr-3 py-2 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-indigo-500 focus:bg-white outline-none transition-all text-sm"
                                                 />
                                             </div>
                                         </div>
@@ -223,10 +262,10 @@ export default function KmPostPage() {
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md shadow-indigo-100"
+                                    className={`w-full ${editingId ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-100' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100'} disabled:bg-slate-300 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md`}
                                 >
-                                    {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <Plus size={20} />}
-                                    Create Post
+                                    {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : (editingId ? <Pencil size={20} /> : <Plus size={20} />)}
+                                    {editingId ? "Update Post" : "Create Post"}
                                 </button>
                             </form>
                         </div>
@@ -234,20 +273,18 @@ export default function KmPostPage() {
 
                     {/* Right Column: List */}
                     <div className="lg:col-span-8 space-y-4">
+                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2">
+                            <Search className="text-slate-400" size={18} />
 
-                        {/* Search Bar */}
-                        <div className="relative group">
-                            <Search className="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={20} />
                             <input
                                 type="text"
                                 placeholder="Search by section or division..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-12 pr-4 py-3.5 bg-white rounded-2xl border border-slate-200 shadow-sm focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all text-slate-700 font-medium"
+                                className="w-full outline-none text-sm text-slate-700 placeholder:text-slate-400 bg-transparent"
                             />
                         </div>
 
-                        {/* List Content */}
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                             {loading ? (
                                 <div className="p-20 flex flex-col items-center justify-center space-y-4">
@@ -294,13 +331,22 @@ export default function KmPostPage() {
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
-                                                        <button
-                                                            onClick={() => handleDelete(post._id!)}
-                                                            className="p-2 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition-all opacity-0 group-hover:opacity-100"
-                                                            title="Delete Record"
-                                                        >
-                                                            <Trash2 size={18} />
-                                                        </button>
+                                                        <div className="flex justify-end gap-1">
+                                                            <button
+                                                                onClick={() => handleEdit(post)}
+                                                                className="p-2 rounded-lg text-slate-400 hover:bg-amber-50 hover:text-amber-600 transition-all"
+                                                                title="Edit Record"
+                                                            >
+                                                                <Pencil size={18} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDelete(post._id!)}
+                                                                className="p-2 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition-all"
+                                                                title="Delete Record"
+                                                            >
+                                                                <Trash2 size={18} />
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))}
