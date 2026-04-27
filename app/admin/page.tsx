@@ -86,6 +86,14 @@ const modules: Module[] = [
     iconColors: "bg-emerald-50 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white",
   },
   {
+    title: "Officer Perfomance",
+    description: "Look up perfomance charts.",
+    href: "/admin/officer-perfomance",
+    icon: <Users size={24} strokeWidth={2} />,
+    borderAccent: "border-l-emerald-500",
+    iconColors: "bg-emerald-50 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white",
+  },
+  {
     title: "Threat Calendar",
     description: "Monitor upcoming security events and alerts.",
     href: "/admin/threat-calendar",
